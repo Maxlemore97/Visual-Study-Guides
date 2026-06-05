@@ -10,6 +10,7 @@ build step, no dependencies.
 | Topic | Language | Open |
 |-------|----------|------|
 | Betriebssysteme (Operating Systems) — Zusammenfassung | 🇩🇪 German | [View](https://maxlemore97.github.io/Visual-Study-Guides/Betriebssysteme%20-%20Zusammenfassung.html) · [Source](./Betriebssysteme%20-%20Zusammenfassung.html) |
+| CT 2 — Zusammenfassung | 🇩🇪 German | [View](https://maxlemore97.github.io/Visual-Study-Guides/CT%202%20-%20Zusammenfassung.html) · [Source](./CT%202%20-%20Zusammenfassung.html) |
 
 > The **View** links work once GitHub Pages is enabled for this repo
 > (Settings → Pages → deploy from `main`, root). Until then, download the file
