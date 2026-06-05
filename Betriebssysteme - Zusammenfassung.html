@@ -1200,73 +1200,148 @@ flowchart TB
       .viz-gantt .calc td:first-child{font-weight:700}
       .viz-gantt .avgcalc{font-size:12.5px;line-height:1.8;font-family:ui-monospace,Menlo,Consolas,monospace;color:var(--ink)}
       .viz-gantt .avgcalc b{color:var(--accent)}
+      .viz-gantt .algonote{margin-top:8px;font-size:12px;color:var(--muted);line-height:1.5;border-top:1px dashed var(--line);padding-top:7px}
+      .viz-gantt .seg sup{font-size:8px;font-weight:700;opacity:.9;margin-left:1px}
+      .viz-gantt .seg{cursor:help}
+      .sched-tip{position:fixed;z-index:95;max-width:310px;background:#1c2230;color:#fff;font-size:12px;line-height:1.5;padding:9px 12px;border-radius:9px;box-shadow:0 8px 24px rgba(0,0,0,.28);pointer-events:none;display:none}
+      .sched-tip b{color:#9ec1ff}
     </style>
     <div class="viz viz-gantt" id="viz-sched">
-      <div class="viz-head">▶ Try it — schedule four jobs, three ways <span class="tag">interactive</span></div>
+      <div class="viz-head">▶ Try it — schedule four jobs, seven ways <span class="tag">interactive</span></div>
       <div class="jobs" id="vs-jobs"></div>
       <div class="controls">
         <span class="grp">algorithm:</span>
         <button data-algo="fcfs">FCFS</button>
         <button data-algo="sjf">SJF</button>
+        <button data-algo="srtn">SRTN</button>
         <button data-algo="rr">RR · q=2</button>
+        <button data-algo="prio">Priority</button>
+        <button data-algo="mlfq">MLFQ</button>
+        <button data-algo="fair">Fair-share</button>
         <button class="reset" data-reset="1">↺ Reset</button>
       </div>
       <div class="gantt" id="vs-gantt"></div>
       <div class="axis" id="vs-axis"></div>
-      <div class="caption" id="vs-cap">Pick an algorithm. The four jobs all arrive at <b>t=0</b> with the bursts shown; watch the CPU timeline fill, then compare the <b>average turnaround</b>.</div>
+      <div class="caption" id="vs-cap">Pick a scheduler. The four jobs arrive at <b>different times</b> (see <i>arr</i>) with the CPU bursts shown; watch the timeline fill, then read off the turnaround / waiting calculation. SRTN, Priority, MLFQ &amp; Fair-share can <b>preempt</b>, so jobs get split.</div>
       <div class="metrics" id="vs-metrics"></div>
     </div>
     <script>
     (function(){
       var root=document.getElementById('viz-sched'); if(!root) return;
       var reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
-      var jobs=[{id:'P1',burst:6,color:'#2f6fed'},{id:'P2',burst:2,color:'#16a34a'},
-                {id:'P3',burst:8,color:'#d97706'},{id:'P4',burst:4,color:'#7c3aed'}];
-      var T=jobs.reduce(function(s,j){return s+j.burst;},0);
+      var jobs=[{id:'P1',arr:0,burst:6,prio:2,w:1,color:'#2f6fed'},
+                {id:'P2',arr:1,burst:3,prio:3,w:1,color:'#16a34a'},
+                {id:'P3',arr:2,burst:7,prio:1,w:1,color:'#d97706'},
+                {id:'P4',arr:4,burst:2,prio:4,w:1,color:'#7c3aed'}];
+      var byId={}; jobs.forEach(function(j){byId[j.id]=j;});
       var gantt=document.getElementById('vs-gantt'), axis=document.getElementById('vs-axis'),
           cap=document.getElementById('vs-cap'), met=document.getElementById('vs-metrics'),
           btns=[].slice.call(root.querySelectorAll('.controls button'));
       document.getElementById('vs-jobs').innerHTML=jobs.map(function(j){
-        return '<span class="jb"><span class="sw" style="background:'+j.color+'"></span>'+j.id+' · burst '+j.burst+'</span>';}).join('');
-      function fcfs(){var t=0;return jobs.map(function(j){var s={id:j.id,start:t,len:j.burst,color:j.color};t+=j.burst;return s;});}
-      function sjf(){var a=jobs.slice().sort(function(x,y){return x.burst-y.burst||(x.id<y.id?-1:1);}),t=0;
-        return a.map(function(j){var s={id:j.id,start:t,len:j.burst,color:j.color};t+=j.burst;return s;});}
-      function rr(q){var rem={},col={},queue=jobs.map(function(j){return j.id;}),t=0,segs=[],g=0;
-        jobs.forEach(function(j){rem[j.id]=j.burst;col[j.id]=j.color;});
-        while(queue.length&&g++<999){var id=queue.shift(),run=Math.min(q,rem[id]);
-          segs.push({id:id,start:t,len:run,color:col[id]});t+=run;rem[id]-=run;if(rem[id]>0)queue.push(id);}
-        return segs;}
+        return '<span class="jb"><span class="sw" style="background:'+j.color+'"></span>'+j.id+' · arr '+j.arr+' · CPU '+j.burst+' · prio '+j.prio+'</span>';}).join('');
+      function arrivals(t,seen){return jobs.filter(function(j){return j.arr<=t&&!seen[j.id];}).sort(function(a,b){return a.arr-b.arr||(a.id<b.id?-1:1);});}
+      function r1(x){return Math.round(x*10)/10;}
+      function toSegs(tk){var s=[],i=0;while(i<tk.length){var c=tk[i];if(c==null){i++;continue;}var st=i;while(i<tk.length&&tk[i]&&tk[i].id===c.id&&tk[i].lv===c.lv)i++;s.push({id:c.id,start:st,len:i-st,color:byId[c.id].color,why:c.why,tag:(c.lv!=null?'L'+c.lv:'')});}return s;}
+      // --- non-preemptive ---
+      function fcfs(){var o=jobs.slice().sort(function(a,b){return a.arr-b.arr||(a.id<b.id?-1:1);}),t=0,started={},s=[];
+        o.forEach(function(j){if(t<j.arr)t=j.arr;
+          var wait=o.filter(function(k){return k.id!==j.id&&!started[k.id]&&k.arr<=t;});
+          var why='<b>FCFS</b> — first come, first served. <b>'+j.id+'</b> is next in <b>arrival order</b> (arrived t='+j.arr+')'+(wait.length?'; waiting behind it: '+wait.map(function(k){return k.id+' (arr '+k.arr+')';}).join(', '):'; nothing else has arrived yet')+'. Non-preemptive → it keeps the CPU for all '+j.burst+' units.';
+          s.push({id:j.id,start:t,len:j.burst,color:j.color,why:why});started[j.id]=1;t+=j.burst;});return s;}
+      function sjf(){var done={},t=0,s=[],f=0,g=0;
+        while(f<jobs.length&&g++<999){var a=jobs.filter(function(j){return j.arr<=t&&!done[j.id];});
+          if(!a.length){t=Math.min.apply(null,jobs.filter(function(j){return !done[j.id];}).map(function(j){return j.arr;}));continue;}
+          a.sort(function(x,y){return x.burst-y.burst||(x.id<y.id?-1:1);});var j=a[0],o=a.slice(1);
+          var why='<b>SJF</b> picks the <b>shortest burst</b> of the jobs that have arrived. <b>'+j.id+'</b> needs <b>'+j.burst+'</b>'+(o.length?', beating '+o.map(function(k){return k.id+' ('+k.burst+')';}).join(', '):' (the only job arrived so far — it can’t wait for shorter jobs arriving later)')+'. Non-preemptive → runs to completion.';
+          s.push({id:j.id,start:t,len:j.burst,color:j.color,why:why});t+=j.burst;done[j.id]=1;f++;}return s;}
+      // --- preemptive, tick-based (decide() returns {id, why}) ---
+      function tickSim(decide){var rem={},done={},t=0,f=0,tk=[],prev=null,g=0;jobs.forEach(function(j){rem[j.id]=j.burst;});
+        while(f<jobs.length&&g++<5000){var a=jobs.filter(function(j){return j.arr<=t&&!done[j.id];});
+          if(!a.length){tk.push(null);prev=null;t++;continue;}
+          var d=decide(a,rem,t,prev);tk.push({id:d.id,why:d.why});rem[d.id]--;t++;if(rem[d.id]===0){done[d.id]=1;f++;prev=null;}else{prev=d.id;}}
+        return toSegs(tk);}
+      function srtn(){return tickSim(function(a,rem,t,prev){a.sort(function(x,y){return rem[x.id]-rem[y.id]||(x.id<y.id?-1:1);});var id=a[0].id,o=a.slice(1);
+        return {id:id,why:'<b>SRTN</b> runs the <b>shortest remaining time</b>. <b>'+id+'</b> has <b>'+rem[id]+'</b> left'+(o.length?' vs '+o.map(function(k){return k.id+' ('+rem[k.id]+')';}).join(', '):' (only ready job)')+(prev&&prev!==id?' → it <b>preempts '+prev+'</b>':'')+'.'};});}
+      function prio(){return tickSim(function(a,rem,t,prev){a.sort(function(x,y){return x.prio-y.prio||(x.id<y.id?-1:1);});var id=a[0].id,o=a.slice(1);
+        return {id:id,why:'<b>Priority</b> runs the <b>highest priority</b> (lowest number). <b>'+id+'</b> = prio <b>'+byId[id].prio+'</b>'+(o.length?' vs '+o.map(function(k){return k.id+' (prio '+byId[k.id].prio+')';}).join(', '):' (only ready job)')+(prev&&prev!==id?' → <b>preempts '+prev+'</b>':'')+'.'};});}
+      function rr(q){var rem={},done={},seen={},Q=[],t=0,f=0,tk=[],cur=null,qc=0,curWhy='',jp=null,g=0;jobs.forEach(function(j){rem[j.id]=j.burst;});
+        arrivals(0,seen).forEach(function(j){Q.push(j.id);seen[j.id]=1;});
+        while(f<jobs.length&&g++<5000){
+          if(cur==null){cur=Q.shift()||null;qc=0;
+            if(cur!=null){curWhy='<b>Round Robin</b> (q='+q+'): jobs take turns, one quantum each. <b>'+cur+'</b> is at the <b>front of the ready queue</b>'+(jp&&jp!==cur?'; <b>'+jp+'</b> just used its quantum and went to the back':'')+'. Behind it: '+(Q.length?Q.join(', '):'(none)')+'.';jp=null;}}
+          if(cur==null){tk.push(null);t++;arrivals(t,seen).forEach(function(j){Q.push(j.id);seen[j.id]=1;});continue;}
+          tk.push({id:cur,why:curWhy});rem[cur]--;qc++;t++;arrivals(t,seen).forEach(function(j){Q.push(j.id);seen[j.id]=1;});
+          if(rem[cur]===0){done[cur]=1;f++;cur=null;}else if(qc===q){Q.push(cur);jp=cur;cur=null;}}
+        return toSegs(tk);}
+      function mlfq(){var quanta=[1,2,4],rem={},done={},seen={},Q=[[],[],[]],t=0,f=0,tk=[],cur=null,cl=0,qc=0,curWhy='',g=0;
+        jobs.forEach(function(j){rem[j.id]=j.burst;});
+        function enq(time){arrivals(time,seen).forEach(function(j){Q[0].push(j.id);seen[j.id]=1;});}
+        function low(){for(var L=0;L<3;L++)if(Q[L].length)return L;return -1;}
+        enq(0);
+        while(f<jobs.length&&g++<5000){
+          if(cur==null){var L=low();if(L<0){tk.push(null);t++;enq(t);continue;}cur=Q[L].shift();cl=L;qc=0;
+            curWhy='<b>MLFQ</b>: the CPU serves the <b>highest non-empty level</b> = <b>L'+cl+'</b> (quantum '+quanta[cl]+'). <b>'+cur+'</b> runs; '+(cl>0?'it sank to L'+cl+' after burning earlier quanta':'it’s still at the top level L0')+'. Waiting — L0:['+Q[0].join(',')+'] L1:['+Q[1].join(',')+'] L2:['+Q[2].join(',')+'].';}
+          tk.push({id:cur,why:curWhy,lv:cl});rem[cur]--;qc++;t++;enq(t);
+          if(rem[cur]===0){done[cur]=1;f++;cur=null;}else if(qc===quanta[cl]){var nl=Math.min(cl+1,2);Q[nl].push(cur);cur=null;}}
+        return toSegs(tk);}
+      function fair(){var rem={},done={},vrt={},ini={},t=0,f=0,tk=[],g=0;jobs.forEach(function(j){rem[j.id]=j.burst;});
+        while(f<jobs.length&&g++<5000){var a=jobs.filter(function(j){return j.arr<=t&&!done[j.id];});
+          if(!a.length){tk.push(null);t++;continue;}
+          var inited=a.filter(function(j){return ini[j.id];}),mv=inited.length?Math.min.apply(null,inited.map(function(j){return vrt[j.id];})):0;
+          a.forEach(function(j){if(!ini[j.id]){vrt[j.id]=mv;ini[j.id]=1;}});
+          a.sort(function(x,y){return vrt[x.id]-vrt[y.id]||(x.id<y.id?-1:1);});var id=a[0].id,o=a.slice(1);
+          var why='<b>Fair-share</b> runs the <b>smallest vruntime</b> (least CPU received so far). <b>'+id+'</b> at vruntime <b>'+r1(vrt[id])+'</b>'+(o.length?' vs '+o.map(function(k){return k.id+' ('+r1(vrt[k.id])+')';}).join(', '):' (only ready job)')+'.';
+          tk.push({id:id,why:why});rem[id]--;vrt[id]+=1/byId[id].w;t++;if(rem[id]===0){done[id]=1;f++;}}
+        return {segs:toSegs(tk),vrt:vrt};}
+      function compute(n){
+        if(n==='fcfs')return {segs:fcfs()};
+        if(n==='sjf')return {segs:sjf()};
+        if(n==='srtn')return {segs:srtn()};
+        if(n==='rr')return {segs:rr(2)};
+        if(n==='prio')return {segs:prio()};
+        if(n==='mlfq')return {segs:mlfq(),note:'<b>MLFQ levels:</b> every job starts at <b>L0 (quantum 1)</b>; each time it burns a full quantum it sinks a level — <b>L0 → L1 (q2) → L2 (q4)</b> — and the CPU always serves the highest non-empty level first. Short jobs finish near the top, CPU-bound jobs sink. The <b>L0/L1/L2</b> tag on each block is the level that slice ran at.'};
+        var fr=fair();return {segs:fr.segs,vrt:fr.vrt,note:'<b>Fair-share / CFS-style:</b> always run the job with the <b>smallest vruntime</b> (= least CPU received so far, weighted). With equal weights this becomes very fine-grained sharing — the CPU rotates almost tick-by-tick.'};}
       function metrics(segs){
-        var comp={}; segs.forEach(function(s){comp[s.id]=Math.max(comp[s.id]||0,s.start+s.len);}); // completion = its last segment's end
+        var comp={}; segs.forEach(function(s){comp[s.id]=Math.max(comp[s.id]||0,s.start+s.len);});
         var N=jobs.length, r2=function(x){return Math.round(x*100)/100;};
-        var rows=jobs.map(function(j){var tt=comp[j.id]; return {id:j.id,burst:j.burst,c:comp[j.id],tt:tt,w:tt-j.burst};}); // arrival=0 → turnaround=completion
+        var rows=jobs.map(function(j){var c=comp[j.id],tt=c-j.arr; return {id:j.id,arr:j.arr,burst:j.burst,c:c,tt:tt,w:tt-j.burst};});
         var sumT=rows.reduce(function(a,r){return a+r.tt;},0), sumW=rows.reduce(function(a,r){return a+r.w;},0);
-        var tbl='<table class="calc"><tr><th>job</th><th>burst Tₑ</th><th>completion</th><th>turnaround<br>= compl − 0</th><th>waiting<br>= turn − Tₑ</th></tr>'+
-          rows.map(function(r){return '<tr><td>'+r.id+'</td><td>'+r.burst+'</td><td>'+r.c+'</td><td>'+r.tt+'</td><td>'+r.w+'</td></tr>';}).join('')+'</table>';
+        var tbl='<table class="calc"><tr><th>job</th><th>arrival</th><th>burst Tₑ</th><th>completion</th><th>turnaround<br>= C − arr</th><th>waiting<br>= T − Tₑ</th></tr>'+
+          rows.map(function(r){return '<tr><td>'+r.id+'</td><td>'+r.arr+'</td><td>'+r.burst+'</td><td>'+r.c+'</td><td>'+r.tt+'</td><td>'+r.w+'</td></tr>';}).join('')+'</table>';
         var avg='<div class="avgcalc"><b>avg turnaround</b> = ('+rows.map(function(r){return r.tt;}).join(' + ')+') ÷ '+N+' = '+sumT+' ÷ '+N+' = <b>'+r2(sumT/N)+'</b><br>'+
           '<b>avg waiting</b> = ('+rows.map(function(r){return r.w;}).join(' + ')+') ÷ '+N+' = '+sumW+' ÷ '+N+' = <b>'+r2(sumW/N)+'</b></div>';
-        return '<div style="font-size:11.5px;color:var(--muted);margin-bottom:2px">all jobs arrive at <b>t = 0</b>, so turnaround = completion:</div>'+tbl+avg;}
-      function ticks(segs){var set={0:1};segs.forEach(function(s){set[s.start+s.len]=1;});
-        axis.innerHTML=Object.keys(set).map(function(v){return '<span style="left:'+(v/T*100)+'%">'+v+'</span>';}).join('');}
-      function render(name){
-        var segs=name==='fcfs'?fcfs():name==='sjf'?sjf():rr(2);
+        return '<div style="font-size:11.5px;color:var(--muted);margin-bottom:2px">turnaround = completion − arrival; waiting = turnaround − burst:</div>'+tbl+avg;}
+      function render(n){
+        var r=compute(n), segs=r.segs, MK=segs.reduce(function(m,s){return Math.max(m,s.start+s.len);},0);
         gantt.innerHTML=''; var els=segs.map(function(s){var d=document.createElement('div');
-          d.className='seg';d.style.width=(s.len/T*100)+'%';d.style.background=s.color;d.textContent=s.id;
-          gantt.appendChild(d);return d;});
-        ticks(segs); met.innerHTML=metrics(segs);
+          d.className='seg';d.style.width=(s.len/MK*100)+'%';d.style.background=s.color;
+          d.innerHTML=s.id+(s.tag?'<sup>'+s.tag+'</sup>':'');d.dataset.why=s.why||'';gantt.appendChild(d);return d;});
+        var set={0:1}; segs.forEach(function(s){set[s.start+s.len]=1;});
+        axis.innerHTML=Object.keys(set).map(function(v){return '<span style="left:'+(v/MK*100)+'%">'+v+'</span>';}).join('');
+        var extra=r.note?'<div class="algonote">'+r.note+'</div>':'';
+        if(r.vrt)extra+='<div class="algonote"><b>final vruntime</b> (smaller = received less CPU) — '+jobs.map(function(j){return j.id+': '+(Math.round(r.vrt[j.id]*10)/10);}).join(' · ')+'</div>';
+        met.innerHTML=metrics(segs)+extra;
         if(reduced||typeof anime==='undefined'){els.forEach(function(d){d.style.transform='scaleX(1)';});return;}
         var tl=anime.timeline({easing:'easeOutQuad'});
-        segs.forEach(function(s,i){tl.add({targets:els[i],scaleX:[0,1],duration:Math.max(170,s.len*120)},s.start*120);});
-      }
+        segs.forEach(function(s,i){tl.add({targets:els[i],scaleX:[0,1],duration:Math.max(120,s.len*110)},s.start*110);});}
+      var CAP={
+        fcfs:'<b>FCFS</b> runs jobs in <b>arrival order</b>, each to completion. The long job P3 makes everyone behind it wait — the <b>convoy effect</b>.',
+        sjf:'<b>SJF</b> (non-preemptive) picks the <b>shortest burst</b> among jobs that have <i>already arrived</i> — it can’t preempt and needs known run-times.',
+        srtn:'<b>SRTN</b> = preemptive SJF: a newly arrived job with <b>shorter remaining time</b> preempts the running one (watch <b>P1 get split</b>). Best average turnaround, most switches.',
+        rr:'<b>Round Robin (q=2)</b>: each job runs one quantum, then to the back of the queue — <b>fair &amp; responsive</b>, but more switches and usually higher turnaround than SJF.',
+        prio:'<b>Priority</b> (preemptive, lower number = higher): high-priority <b>P3</b> preempts and runs long, so low-priority <b>P4 waits until the end</b> — that’s <b>starvation</b> risk.',
+        mlfq:'<b>MLFQ</b> needs <i>no</i> known run-times: jobs start high and <b>sink</b> a level each time they burn a full quantum. Short/interactive jobs stay near the top and finish fast; CPU-bound jobs drift down.',
+        fair:'<b>Fair-share / CFS</b> gives everyone an equal slice by always running the job that has received the <b>least CPU</b> (smallest <b>vruntime</b>) → very fine-grained sharing.'};
       btns.forEach(function(b){b.addEventListener('click',function(){
         if(b.dataset.reset){btns.forEach(function(x){x.classList.remove('sel');});gantt.innerHTML='';axis.innerHTML='';met.innerHTML='';
-          cap.innerHTML='Pick an algorithm. The four jobs all arrive at <b>t=0</b> with the bursts shown; watch the CPU timeline fill, then compare the <b>average turnaround</b>.';return;}
+          cap.innerHTML='Pick a scheduler. The four jobs arrive at <b>different times</b> (see <i>arr</i>); watch the timeline fill, then read off the turnaround / waiting calculation.';return;}
         btns.forEach(function(x){if(!x.dataset.reset)x.classList.toggle('sel',x===b);});
-        var n=b.dataset.algo; render(n);
-        cap.innerHTML=n==='fcfs'?'<b>FCFS</b> runs jobs in arrival order — a long job (P3) makes everyone behind it wait (convoy effect).'
-          :n==='sjf'?'<b>SJF</b> runs the shortest job first → the <b>lowest average turnaround</b> of the three, but needs to know burst lengths and can starve long jobs.'
-          :'<b>Round Robin (q=2)</b> slices fairly — great responsiveness, but more context switches and usually a higher average turnaround than SJF.';
+        var n=b.dataset.algo; render(n); cap.innerHTML=(CAP[n]||'')+' <span style="color:var(--muted)">— hover any block to see <b>why it was picked</b>.</span>';
       });});
+      var stip=document.createElement('div'); stip.className='sched-tip'; document.body.appendChild(stip);
+      gantt.addEventListener('mouseover',function(e){var s=e.target.closest('.seg');if(!s||!s.dataset.why)return;stip.innerHTML=s.dataset.why;stip.style.display='block';});
+      gantt.addEventListener('mousemove',function(e){if(stip.style.display!=='block')return;var w=stip.offsetWidth,h=stip.offsetHeight;var left=Math.max(8,Math.min(e.clientX+14,window.innerWidth-w-8)),top=e.clientY-h-12;if(top<8)top=e.clientY+20;stip.style.left=left+'px';stip.style.top=top+'px';});
+      gantt.addEventListener('mouseleave',function(){stip.style.display='none';});
     })();
     </script>
 
@@ -1277,16 +1352,16 @@ flowchart TB
     <div class="qa"><div class="q">4. FIFO and RR; effect of quantum size; does RR starve?</div><details class="ans"><summary>Answer</summary><div class="a">FIFO: one queue, run-to-completion (convoy effect). RR: one quantum each, preemptive. Small q = responsive + overhead; large q → FIFO. RR has <b>no starvation</b>.<div class="ref">📖 Explained above: <a href="#ch5-generic-algorithms">Generic algorithms ↗</a></div></div></details></div>
     <div class="qa"><div class="q">5. Problem of multi-level priority; how MLFQ fixes it.</div><details class="ans"><summary>Answer</summary><div class="a">Plain priority can <b>starve</b> low queues. MLFQ: priority <b>drops</b> as a task runs; lower queues get bigger quanta → favours short/interactive while still serving long jobs.<div class="ref">📖 Explained above: <a href="#ch5-generic-algorithms">Generic algorithms ↗</a></div></div></details></div>
     <div class="qa"><div class="q">6. RM rule + bound; what it converges to; RM vs EDF.</div><details class="ans"><summary>Answer</summary><div class="a">RM: shortest period → highest priority; guaranteed if <code>U ≤ n(2^(1/n)−1)</code> → <b>ln 2 ≈ 0.69</b>. EDF: dynamic, nearest-deadline, feasible iff <b>U ≤ 1</b> (higher utilization).<div class="ref">📖 Explained above: <a href="#ch5-real-time-schedulers">Real-time schedulers ↗</a></div></div></details></div>
-    <div class="qa"><div class="q">7. q=2; T1(0,10) T2(3,6) T3(7,1) T4(8,3). FIFO and RR schedules + avg turnaround/wait.</div><details class="ans"><summary>Answer</summary><div class="a"><b>FIFO</b> <code>T1[0–10] T2[10–16] T3[16–17] T4[17–20]</code>: turnaround 10/13/10/12 → <b>avg 11.25</b>; wait 0/7/9/9 → <b>avg 6.25</b>. <b>RR q=2</b> completions T1 20, T2 17, T3 11, T4 18: turnaround 20/14/4/10 → <b>avg 12</b>; wait → <b>avg 7</b> (short jobs T3/T4 get much better turnaround).<div class="ref">📖 Explained above: <a href="#ch5-generic-algorithms">Generic algorithms ↗</a></div></div></details></div>
-    <div class="qa"><div class="q">8. RM: T1(C10,T20) T2(C10,T50) T3(C5,T30). Highest priority? Guaranteed by bound? Actually schedulable?</div><details class="ans"><summary>Answer</summary><div class="a">(a) shortest period <b>T1</b> (then T3, then T2). (b) U = 0.5+0.2+0.167 = <b>0.867</b> &gt; bound <code>3(2^(1/3)−1) ≈ 0.78</code> → <b>not guaranteed</b>. (c) bound is only sufficient — the actual RM timeline meets all deadlines, so it <b>is</b> schedulable.<div class="ref">📖 Explained above: <a href="#ch5-real-time-schedulers">Real-time schedulers ↗</a></div></div></details></div>
+    <div class="qa"><div class="q">7. Four jobs given as <b>(arrival, CPU&nbsp;burst)</b>: T1 (0,&nbsp;10), T2 (3,&nbsp;6), T3 (7,&nbsp;1), T4 (8,&nbsp;3). Draw the <b>FIFO</b> and the <b>Round-Robin</b> (quantum q&nbsp;=&nbsp;2) schedule, then give the <b>average turnaround</b> and <b>average waiting time</b> for each.</div><details class="ans"><summary>Answer</summary><div class="a"><b>FIFO</b> <code>T1[0–10] T2[10–16] T3[16–17] T4[17–20]</code>: turnaround 10/13/10/12 → <b>avg 11.25</b>; wait 0/7/9/9 → <b>avg 6.25</b>. <b>RR q=2</b> completions T1 20, T2 17, T3 11, T4 18: turnaround 20/14/4/10 → <b>avg 12</b>; wait → <b>avg 7</b> (short jobs T3/T4 get much better turnaround).<div class="ref">📖 Explained above: <a href="#ch5-generic-algorithms">Generic algorithms ↗</a></div></div></details></div>
+    <div class="qa"><div class="q">8. <b>Rate Monotonic</b> with three periodic tasks given as <b>(C&nbsp;=&nbsp;compute time, T&nbsp;=&nbsp;period)</b>: T1 (C&nbsp;10, T&nbsp;20), T2 (C&nbsp;10, T&nbsp;50), T3 (C&nbsp;5, T&nbsp;30). (a) Which task gets the <b>highest priority</b>? (b) Is it <b>guaranteed</b> by the RM utilization bound? (c) Is it <b>actually schedulable</b>?</div><details class="ans"><summary>Answer</summary><div class="a">(a) shortest period <b>T1</b> (then T3, then T2). (b) U = 0.5+0.2+0.167 = <b>0.867</b> &gt; bound <code>3(2^(1/3)−1) ≈ 0.78</code> → <b>not guaranteed</b>. (c) bound is only sufficient — the actual RM timeline meets all deadlines, so it <b>is</b> schedulable.<div class="ref">📖 Explained above: <a href="#ch5-real-time-schedulers">Real-time schedulers ↗</a></div></div></details></div>
     <div class="qa"><div class="q">9. Linux hierarchy low→high; which class wins; why no hard RT?</div><details class="ans"><summary>Answer</summary><div class="a"><code>IDLE &lt; BATCH &lt; OTHER &lt; RR &lt; FIFO &lt; DEADLINE</code>. The <b>Real-Time</b> class always beats Normal. No hard RT because kernel threads (without RT patches) have no guaranteed completion time — only soft (~sub-100 ms).<div class="ref">📖 Explained above: <a href="#ch5-linux-scheduling">Linux scheduling ↗</a></div></div></details></div>
     <div class="qa"><div class="q">10. Linux priority numbers + <code>PR = 20 + NI</code>; is <code>nice</code> used for RT?</div><details class="ans"><summary>Answer</summary><div class="a">Kernel: RT 0–99, Normal 100–139. <code>nice</code> −20…+19 (−20 highest); <code>top</code> PR = 20 + NI (RT shown negative). <code>nice</code> is <b>ignored</b> for RT policies.<div class="ref">📖 Explained above: <a href="#ch5-linux-scheduling">Linux scheduling (priorities) ↗</a></div></div></details></div>
     <div class="qa"><div class="q">11. SCHED_FIFO vs SCHED_RR; what is RT bandwidth limiting?</div><details class="ans"><summary>Answer</summary><div class="a">Both 1–99 and preempt Normal. FIFO = run to completion; RR = adds a quantum (re-queued after). Bandwidth limiting reserves CPU for non-RT so a runaway RT task can't lock the system.<div class="ref">📖 Explained above: <a href="#ch5-linux-scheduling">Linux scheduling ↗</a></div></div></details></div>
     <div class="qa"><div class="q">12. CFS data structure, ordering, role of <code>nice</code>.</div><details class="ans"><summary>Answer</summary><div class="a">A <b>red-black tree</b> ordered by <b>vruntime</b>; runs the smallest-vruntime task. <code>nice</code> changes the weight — low nice makes vruntime grow slower → more CPU.<div class="ref">📖 Explained above: <a href="#ch5-linux-scheduling">Linux scheduling (CFS) ↗</a></div></div></details></div>
     <div class="qa"><div class="q">13. Cache affinity; why avoid migration; how to pin?</div><details class="ans"><summary>Answer</summary><div class="a">A task's data survives in a core's cache; migrating loses it (cold cache) + overhead → migrate only when load imbalance warrants. Pin with <code>sched_setaffinity()</code>.<div class="ref">📖 Explained above: <a href="#ch5-multicore-cache-affinity">Multicore: cache affinity ↗</a></div></div></details></div>
-    <div class="qa"><div class="q">14. Jobs 8,4,4,2 at t=0: avg turnaround FCFS vs SJF? Why SJF better, when is the guarantee lost?</div><details class="ans"><summary>Answer</summary><div class="a"><b>FCFS</b>: completions 8,12,16,18 → avg <b>13.5</b>. <b>SJF</b>: 2,6,10,18 → avg <b>9</b>. Short-first lets early finishes weigh less on the average. Guarantee holds only when all jobs are present at once; if they arrive over time, SJF is no longer optimal.<div class="ref">📖 Explained above: <a href="#ch5-generic-algorithms">Generic algorithms (SJF) ↗</a></div></div></details></div>
+    <div class="qa"><div class="q">14. Four jobs with <b>CPU bursts 8, 4, 4, 2</b>, all arriving at <b>t&nbsp;=&nbsp;0</b>: average turnaround under <b>FCFS</b> vs <b>SJF</b>? Why is SJF better, and when is its optimality guarantee lost?</div><details class="ans"><summary>Answer</summary><div class="a"><b>FCFS</b>: completions 8,12,16,18 → avg <b>13.5</b>. <b>SJF</b>: 2,6,10,18 → avg <b>9</b>. Short-first lets early finishes weigh less on the average. Guarantee holds only when all jobs are present at once; if they arrive over time, SJF is no longer optimal.<div class="ref">📖 Explained above: <a href="#ch5-generic-algorithms">Generic algorithms (SJF) ↗</a></div></div></details></div>
     <h3 id="ch5-lab-questions">🧪 Lab questions</h3>
-    <div class="qa"><div class="q">Lab (RM): T1(C=10,T=20), T2(C=10,T=50), T3(C=5,T=30): highest priority? Guaranteed by the bound?</div><details class="ans"><summary>Answer</summary><div class="a">Shortest period <b>T1</b>. U = 0.5+0.2+0.167 = 0.867 &gt; bound 3(2^(1/3)−1) ≈ 0.78 → <b>not guaranteed</b> (but the actual timeline is schedulable).<div class="ref">📖 Explained above: <a href="#ch5-real-time-schedulers">Real-time schedulers ↗</a></div></div></details></div>
+    <div class="qa"><div class="q">Lab (RM): three periodic tasks <b>(C&nbsp;=&nbsp;compute time, T&nbsp;=&nbsp;period)</b> — T1 (C=10, T=20), T2 (C=10, T=50), T3 (C=5, T=30). Which has the <b>highest priority</b>, and is the set <b>guaranteed by the RM bound</b>?</div><details class="ans"><summary>Answer</summary><div class="a">Shortest period <b>T1</b>. U = 0.5+0.2+0.167 = 0.867 &gt; bound 3(2^(1/3)−1) ≈ 0.78 → <b>not guaranteed</b> (but the actual timeline is schedulable).<div class="ref">📖 Explained above: <a href="#ch5-real-time-schedulers">Real-time schedulers ↗</a></div></div></details></div>
   </section>
   <section class="chapter" id="ch6">
     <h2 class="chap">6. PROC-II — Linux Resource Management (cgroups v2)</h2>
