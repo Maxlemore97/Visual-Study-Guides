@@ -723,6 +723,95 @@ stateDiagram-v2
       </ul>
       ⭐ Note there is <b>no Blocked → Running</b> edge: a just-woken process always re-joins the <b>Ready</b> queue first — it can't jump straight onto the CPU.</div>
 
+    <!-- ===== interactive widget: process state machine (progressive enhancement) ===== -->
+    <style>
+      .viz{margin:14px 0;border:1px solid var(--line);border-radius:12px;padding:14px 14px 12px;background:#fcfdff}
+      .viz .viz-head{font-weight:700;font-size:14px;color:var(--ink);margin-bottom:4px}
+      .viz .viz-head .tag{font-weight:600;font-size:11px;color:var(--accent);background:var(--accent-soft);border-radius:20px;padding:2px 9px;margin-left:8px;vertical-align:middle}
+      .viz-sm .stage{position:relative;height:128px;margin:8px 0}
+      .viz-sm .station{position:absolute;top:24px;height:80px;width:26%;min-width:98px;border:2px solid #cfd6e4;border-radius:12px;
+        background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-weight:700;color:#39435a}
+      .viz-sm .station[data-state="ready"]{left:1%}
+      .viz-sm .station[data-state="running"]{left:37%}
+      .viz-sm .station[data-state="blocked"]{left:73%}
+      .viz-sm .station small{font-weight:500;font-size:11px;color:var(--muted)}
+      .viz-sm .station.hit{animation:vizhit .6s ease}
+      @keyframes vizhit{0%{box-shadow:0 0 0 0 rgba(47,111,237,.45);border-color:var(--accent)}100%{box-shadow:0 0 0 12px rgba(47,111,237,0);border-color:#cfd6e4}}
+      .viz-sm .token{position:absolute;left:0;top:0;width:62px;height:36px;border-radius:20px;background:var(--accent);color:#fff;
+        display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12.5px;z-index:3;
+        box-shadow:0 4px 12px rgba(47,111,237,.4);will-change:transform}
+      .viz-sm .controls{display:flex;flex-wrap:wrap;gap:7px;margin-top:4px}
+      .viz-sm .controls button{border:1px solid var(--line);background:#fff;color:var(--muted);border-radius:18px;
+        padding:6px 12px;font-size:13px;font-weight:600;cursor:not-allowed;opacity:.5;transition:all .15s}
+      .viz-sm .controls button.on{cursor:pointer;opacity:1;color:var(--accent);border-color:var(--accent);background:var(--accent-soft)}
+      .viz-sm .controls button.on:hover{background:var(--accent);color:#fff}
+      .viz-sm .controls button.reset{cursor:pointer;opacity:1;color:var(--ink);border-color:var(--line);background:#eef1f6}
+      .viz-sm .caption{margin-top:10px;font-size:13px;color:var(--ink);min-height:34px;line-height:1.45}
+      .viz-sm .caption .muted{color:var(--muted)}
+      @media print{.viz .controls{display:none}}
+    </style>
+    <div class="viz viz-sm" id="viz-states">
+      <div class="viz-head">▶ Try it — drive a process through its states <span class="tag">interactive</span></div>
+      <div class="stage">
+        <div class="station" data-state="ready"><span>Ready</span><small>runnable, off-CPU</small></div>
+        <div class="station" data-state="running"><span>Running</span><small>on the CPU</small></div>
+        <div class="station" data-state="blocked"><span>Blocked</span><small>asleep, waiting</small></div>
+        <div class="token" aria-hidden="true">proc</div>
+      </div>
+      <div class="controls">
+        <button data-from="ready" data-to="running" data-why="<b>Ready → Running (dispatch).</b> The scheduler picks it and hands it the CPU.">▶ Dispatch</button>
+        <button data-from="running" data-to="ready" data-why="<b>Running → Ready (preempted).</b> Its time-slice ended or a higher-priority task arrived. Still runnable — just not right now.">⏱ Timer / preempt</button>
+        <button data-from="running" data-to="blocked" data-why="<b>Running → Blocked.</b> It asked for I/O or a lock; holding the CPU would be pointless, so it sleeps.">⌛ Wait for I/O</button>
+        <button data-from="blocked" data-to="ready" data-why="<b>Blocked → Ready.</b> The I/O finished / event fired. It's runnable again — but must queue for the CPU. <b>There is no Blocked → Running shortcut.</b>">✅ I/O done</button>
+        <button data-from="running" data-to="exit" data-why="<b>Running → terminated.</b> It called <code>exit()</code> — finished.">⏹ Exit</button>
+        <button class="reset" data-reset="1">↺ Reset</button>
+      </div>
+      <div class="caption" id="viz-states-cap">The process starts <b>Ready</b>. Only moves that are <b>legal from the current state</b> light up — watch how, once it's <b>Blocked</b>, the <i>only</i> way out is back to <b>Ready</b>.</div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/animejs@3.2.2/lib/anime.min.js"></script>
+    <script>
+    (function(){
+      var root=document.getElementById('viz-states'); if(!root) return;
+      var stage=root.querySelector('.stage'), token=root.querySelector('.token'),
+          cap=document.getElementById('viz-states-cap'),
+          btns=[].slice.call(root.querySelectorAll('.controls button')),
+          reduced=matchMedia('(prefers-reduced-motion: reduce)').matches, state='ready';
+      function target(s){
+        var st=stage.querySelector('.station[data-state="'+s+'"]'); if(!st) return null;
+        return {x: st.offsetLeft+st.offsetWidth/2-token.offsetWidth/2,
+                y: st.offsetTop +st.offsetHeight/2-token.offsetHeight/2};
+      }
+      function place(s,animated,cb){
+        var t=target(s); if(!t){cb&&cb();return;}
+        if(!animated||reduced||typeof anime==='undefined'){
+          token.style.transform='translate('+t.x+'px,'+t.y+'px)'; cb&&cb(); return;
+        }
+        anime.remove(token);
+        anime({targets:token,translateX:t.x,translateY:t.y,
+          scale:[{value:1.12,duration:150},{value:1,duration:260}],
+          duration:540,easing:'easeInOutCubic',complete:cb});
+      }
+      function pulse(s){var st=stage.querySelector('.station[data-state="'+s+'"]');
+        if(st){st.classList.remove('hit');void st.offsetWidth;st.classList.add('hit');}}
+      function render(){btns.forEach(function(b){if(b.dataset.reset)return;
+        var ok=(b.dataset.from===state&&state!=='exit');b.disabled=!ok;b.classList.toggle('on',ok);});}
+      function go(to,why){
+        if(to==='exit'){state='exit';
+          if(reduced||typeof anime==='undefined') token.style.opacity=0;
+          else anime({targets:token,opacity:0,scale:.6,duration:420,easing:'easeInQuad'});
+          cap.innerHTML=why+' <span class="muted">— hit ↺ Reset to start over.</span>';render();return;}
+        state=to;place(to,true);pulse(to);cap.innerHTML=why;render();
+      }
+      btns.forEach(function(b){b.addEventListener('click',function(){
+        if(b.dataset.reset){state='ready';token.style.opacity=1;place('ready',false);
+          cap.innerHTML='Back to <b>Ready</b> — drive it around again.';render();return;}
+        if(b.disabled)return; go(b.dataset.to,b.dataset.why);});});
+      function init(){place('ready',false);render();}
+      if(document.readyState!=='loading') init(); else addEventListener('DOMContentLoaded',init);
+      addEventListener('resize',function(){if(state!=='exit')place(state,false);});
+    })();
+    </script>
+
     <h3 id="ch4-mode-switch-vs-context-switch">Mode switch vs context switch</h3>
     <table>
       <thead><tr><th></th><th>Mode switch</th><th>Context switch</th></tr></thead>
@@ -735,6 +824,66 @@ stateDiagram-v2
     <p>Triggers: <b>timer</b>, <b>interrupt</b>, <b>page fault</b> (<i>implicit</i> OS request), <b>system call</b> (<i>explicit</i> OS request).</p>
     <div class="box simple"><span class="lab">💡 Implicit vs explicit — who asked for the switch?</span>
       <b>Explicit</b> = the program <b>deliberately asks</b> the OS for something — a <b>system call</b> like <code>read()</code> (it knows it might have to wait). <b>Implicit</b> = it happens <b>transparently, without the program asking</b> — a <b>page fault</b> (the program just touched a memory address; the OS silently fetches the missing page) or a <b>timer interrupt</b> (the clock fires and the OS preempts it mid-instruction-stream). Same machinery underneath (a jump into the kernel) — the difference is only whether the running program <i>requested</i> it or had it <i>imposed</i>.</div>
+
+    <!-- ===== interactive widget: context switch (register save/restore) ===== -->
+    <style>
+      .viz-cs .cs-stage{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin:8px 0}
+      .viz-cs .col{border:2px solid #cfd6e4;border-radius:10px;padding:8px;background:#fff}
+      .viz-cs .col.run{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+      .viz-cs .lbl{font-weight:700;font-size:12px;margin-bottom:6px;color:#39435a;text-align:center}
+      .viz-cs .col.run .lbl{color:var(--accent)}
+      .viz-cs .row{display:flex;justify-content:space-between;gap:6px;font-size:12px;padding:3px 5px;border-radius:5px}
+      .viz-cs .row .rn{font-weight:700;color:var(--muted)}
+      .viz-cs .row .rv{font-family:ui-monospace,Menlo,Consolas,monospace;color:var(--ink)}
+      .viz-cs .row.empty .rv{color:#c5cbd6}
+    </style>
+    <div class="viz viz-cs" id="viz-cs">
+      <div class="viz-head">▶ Try it — a context switch, register by register <span class="tag">interactive</span></div>
+      <div class="cs-stage">
+        <div class="col" id="cs-A"><div class="lbl">PCB · Process A</div><div class="body"></div></div>
+        <div class="col cpu run" id="cs-cpu"><div class="lbl">CPU registers · running A</div><div class="body"></div></div>
+        <div class="col" id="cs-B"><div class="lbl">PCB · Process B</div><div class="body"></div></div>
+      </div>
+      <div class="controls"><button class="sel" id="cs-go">⇄ Switch process</button><button class="reset" data-reset="1">↺ Reset</button></div>
+      <div class="caption" id="cs-cap">The CPU is running <b>A</b>; <b>PCB-B</b> holds B's saved registers. A switch must <b>save A's live registers into PCB-A</b>, then <b>load PCB-B into the CPU</b>. Click to watch it happen row by row.</div>
+    </div>
+    <script>
+    (function(){
+      var root=document.getElementById('viz-cs'); if(!root) return;
+      var reduced=matchMedia('(prefers-reduced-motion: reduce)').matches, DASH='—';
+      var regs=[['PC','0x004A10','0x00C3F8'],['SP','0x7ffe20','0x7ffd90'],['PSW','0x0202','0x0202'],['R1','7','3'],['R2','42','99']];
+      var def={A:{},B:{}}; regs.forEach(function(r){def.A[r[0]]=r[1];def.B[r[0]]=r[2];});
+      var vals, owner, cells={A:{},cpu:{},B:{}};
+      var bodyA=root.querySelector('#cs-A .body'), bodyC=root.querySelector('#cs-cpu .body'), bodyB=root.querySelector('#cs-B .body');
+      function build(where,body){regs.forEach(function(r){var d=document.createElement('div');d.className='row';
+        d.innerHTML='<span class="rn">'+r[0]+'</span><span class="rv"></span>';body.appendChild(d);cells[where][r[0]]=d;});}
+      build('A',bodyA);build('cpu',bodyC);build('B',bodyB);
+      function reset(){vals={cpu:{},A:{},B:{}};regs.forEach(function(r){vals.cpu[r[0]]=def.A[r[0]];vals.A[r[0]]=DASH;vals.B[r[0]]=def.B[r[0]];});owner='A';paint(false);
+        root.querySelector('#cs-cpu .lbl').textContent='CPU registers · running A';
+        document.getElementById('cs-cap').innerHTML='The CPU is running <b>A</b>; <b>PCB-B</b> holds B’s saved registers. Click <b>Switch</b> to save A and load B.';}
+      function paint(animate,changed){
+        ['A','cpu','B'].forEach(function(w){regs.forEach(function(r){var c=cells[w][r[0]],v=vals[w][r[0]];
+          c.querySelector('.rv').textContent=v; c.classList.toggle('empty',v===DASH);});});
+        root.querySelector('#cs-cpu').classList.add('run');
+        if(animate && !reduced && typeof anime!=='undefined' && changed && changed.length)
+          anime({targets:changed,opacity:[0,1],translateY:[-6,0],duration:380,delay:anime.stagger(70),easing:'easeOutQuad'});
+      }
+      function go(){
+        var cur=owner, other=cur==='A'?'B':'A', changed=[];
+        regs.forEach(function(r){vals[cur][r[0]]=vals.cpu[r[0]];changed.push(cells[cur][r[0]]);});        // save
+        regs.forEach(function(r){vals.cpu[r[0]]=vals[other][r[0]];vals[other][r[0]]=DASH;                 // restore
+          changed.push(cells.cpu[r[0]]);changed.push(cells[other][r[0]]);});
+        owner=other; paint(true,changed);
+        root.querySelector('#cs-A').classList.toggle('run',owner==='A');
+        root.querySelector('#cs-B').classList.toggle('run',owner==='B');
+        root.querySelector('#cs-cpu .lbl').textContent='CPU registers · running '+owner;
+        document.getElementById('cs-cap').innerHTML='Saved <b>'+cur+'</b>’s registers into <b>PCB-'+cur+'</b>, loaded <b>PCB-'+other+'</b> into the CPU — now <b>'+other+' is running</b>. <span class="muted">That copy-out-then-copy-in is exactly why a context switch costs more than a mode switch.</span>';
+      }
+      document.getElementById('cs-go').addEventListener('click',go);
+      root.querySelector('[data-reset]').addEventListener('click',function(){root.querySelector('#cs-A').classList.remove('run');root.querySelector('#cs-B').classList.remove('run');reset();});
+      reset();
+    })();
+    </script>
 
     <h3 id="ch4-process-control-block-pcb">Process Control Block (PCB)</h3>
     <p>The per-process record the OS keeps: <b>process mgmt</b> (registers, PC, PSW, SP, state, priority, PID, parent, signals, CPU time), <b>memory mgmt</b> (segment pointers), <b>file mgmt</b> (cwd, file descriptors, UID/GID). In Linux: a <b>doubly linked list</b> of <code>struct task_struct</code>.</p>
@@ -877,6 +1026,90 @@ flowchart TB
     <h3 id="ch5-multicore-cache-affinity">Multicore: cache affinity</h3>
     <p><b>Cache affinity:</b> after a context switch a task's data often survives in that core's cache, so re-running on the <b>same core</b> avoids cache misses → don't migrate without need. Pin with <code>sched_setaffinity()</code>.</p>
 
+    <!-- ===== interactive widget: scheduling visualizer (FCFS/SJF/RR) ===== -->
+    <style>
+      /* shared control/caption styles for all non-state-machine widgets */
+      .viz:not(.viz-sm) .controls{display:flex;flex-wrap:wrap;gap:7px;margin-top:6px;align-items:center}
+      .viz:not(.viz-sm) .controls button{border:1px solid var(--line);background:#fff;color:var(--accent);border-radius:18px;padding:6px 12px;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s}
+      .viz:not(.viz-sm) .controls button:hover{background:var(--accent-soft)}
+      .viz:not(.viz-sm) .controls button.sel{background:var(--accent);color:#fff;border-color:var(--accent)}
+      .viz:not(.viz-sm) .controls button.reset{color:var(--ink);background:#eef1f6;border-color:var(--line)}
+      .viz:not(.viz-sm) .controls .grp{font-size:12px;color:var(--muted);font-weight:700;margin-left:6px}
+      .viz:not(.viz-sm) .caption{margin-top:10px;font-size:13px;color:var(--ink);line-height:1.45;min-height:20px}
+      .viz:not(.viz-sm) .caption .muted{color:var(--muted)}
+      .viz-gantt .jobs{display:flex;flex-wrap:wrap;gap:10px;margin:2px 0 8px;font-size:12.5px}
+      .viz-gantt .jobs .jb{display:flex;align-items:center;gap:6px;font-weight:700;color:var(--ink)}
+      .viz-gantt .jobs .sw{width:14px;height:14px;border-radius:4px}
+      .viz-gantt .gantt{position:relative;display:flex;height:44px;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:#fff}
+      .viz-gantt .seg{height:100%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:12px;transform:scaleX(0);transform-origin:left center;border-right:1px solid rgba(255,255,255,.55);overflow:hidden;white-space:nowrap}
+      .viz-gantt .axis{position:relative;height:16px;margin-top:3px;font-size:11px;color:var(--muted)}
+      .viz-gantt .axis span{position:absolute;transform:translateX(-50%)}
+      .viz-gantt .metrics{margin-top:10px;font-size:13px;color:var(--ink)}
+      .viz-gantt .metrics b{color:var(--accent)}
+    </style>
+    <div class="viz viz-gantt" id="viz-sched">
+      <div class="viz-head">▶ Try it — schedule four jobs, three ways <span class="tag">interactive</span></div>
+      <div class="jobs" id="vs-jobs"></div>
+      <div class="controls">
+        <span class="grp">algorithm:</span>
+        <button data-algo="fcfs">FCFS</button>
+        <button data-algo="sjf">SJF</button>
+        <button data-algo="rr">RR · q=2</button>
+        <button class="reset" data-reset="1">↺ Reset</button>
+      </div>
+      <div class="gantt" id="vs-gantt"></div>
+      <div class="axis" id="vs-axis"></div>
+      <div class="caption" id="vs-cap">Pick an algorithm. The four jobs all arrive at <b>t=0</b> with the bursts shown; watch the CPU timeline fill, then compare the <b>average turnaround</b>.</div>
+      <div class="metrics" id="vs-metrics"></div>
+    </div>
+    <script>
+    (function(){
+      var root=document.getElementById('viz-sched'); if(!root) return;
+      var reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
+      var jobs=[{id:'P1',burst:6,color:'#2f6fed'},{id:'P2',burst:2,color:'#16a34a'},
+                {id:'P3',burst:8,color:'#d97706'},{id:'P4',burst:4,color:'#7c3aed'}];
+      var T=jobs.reduce(function(s,j){return s+j.burst;},0);
+      var gantt=document.getElementById('vs-gantt'), axis=document.getElementById('vs-axis'),
+          cap=document.getElementById('vs-cap'), met=document.getElementById('vs-metrics'),
+          btns=[].slice.call(root.querySelectorAll('.controls button'));
+      document.getElementById('vs-jobs').innerHTML=jobs.map(function(j){
+        return '<span class="jb"><span class="sw" style="background:'+j.color+'"></span>'+j.id+' · burst '+j.burst+'</span>';}).join('');
+      function fcfs(){var t=0;return jobs.map(function(j){var s={id:j.id,start:t,len:j.burst,color:j.color};t+=j.burst;return s;});}
+      function sjf(){var a=jobs.slice().sort(function(x,y){return x.burst-y.burst||(x.id<y.id?-1:1);}),t=0;
+        return a.map(function(j){var s={id:j.id,start:t,len:j.burst,color:j.color};t+=j.burst;return s;});}
+      function rr(q){var rem={},col={},queue=jobs.map(function(j){return j.id;}),t=0,segs=[],g=0;
+        jobs.forEach(function(j){rem[j.id]=j.burst;col[j.id]=j.color;});
+        while(queue.length&&g++<999){var id=queue.shift(),run=Math.min(q,rem[id]);
+          segs.push({id:id,start:t,len:run,color:col[id]});t+=run;rem[id]-=run;if(rem[id]>0)queue.push(id);}
+        return segs;}
+      function metrics(segs){var comp={};segs.forEach(function(s){comp[s.id]=s.start+s.len;});
+        var tt=jobs.map(function(j){return comp[j.id];}),avg=tt.reduce(function(a,b){return a+b;},0)/jobs.length;
+        return jobs.map(function(j){return j.id+'→'+comp[j.id];}).join(' · ')+
+          ' &nbsp;|&nbsp; avg turnaround = <b>'+(Math.round(avg*100)/100)+'</b>';}
+      function ticks(segs){var set={0:1};segs.forEach(function(s){set[s.start+s.len]=1;});
+        axis.innerHTML=Object.keys(set).map(function(v){return '<span style="left:'+(v/T*100)+'%">'+v+'</span>';}).join('');}
+      function render(name){
+        var segs=name==='fcfs'?fcfs():name==='sjf'?sjf():rr(2);
+        gantt.innerHTML=''; var els=segs.map(function(s){var d=document.createElement('div');
+          d.className='seg';d.style.width=(s.len/T*100)+'%';d.style.background=s.color;d.textContent=s.id;
+          gantt.appendChild(d);return d;});
+        ticks(segs); met.innerHTML=metrics(segs);
+        if(reduced||typeof anime==='undefined'){els.forEach(function(d){d.style.transform='scaleX(1)';});return;}
+        var tl=anime.timeline({easing:'easeOutQuad'});
+        segs.forEach(function(s,i){tl.add({targets:els[i],scaleX:[0,1],duration:Math.max(170,s.len*120)},s.start*120);});
+      }
+      btns.forEach(function(b){b.addEventListener('click',function(){
+        if(b.dataset.reset){btns.forEach(function(x){x.classList.remove('sel');});gantt.innerHTML='';axis.innerHTML='';met.innerHTML='';
+          cap.innerHTML='Pick an algorithm. The four jobs all arrive at <b>t=0</b> with the bursts shown; watch the CPU timeline fill, then compare the <b>average turnaround</b>.';return;}
+        btns.forEach(function(x){if(!x.dataset.reset)x.classList.toggle('sel',x===b);});
+        var n=b.dataset.algo; render(n);
+        cap.innerHTML=n==='fcfs'?'<b>FCFS</b> runs jobs in arrival order — a long job (P3) makes everyone behind it wait (convoy effect).'
+          :n==='sjf'?'<b>SJF</b> runs the shortest job first → the <b>lowest average turnaround</b> of the three, but needs to know burst lengths and can starve long jobs.'
+          :'<b>Round Robin (q=2)</b> slices fairly — great responsiveness, but more context switches and usually a higher average turnaround than SJF.';
+      });});
+    })();
+    </script>
+
     <h3 id="ch5-self-test-click-to-reveal-answers">Self-test <span class="pill">click to reveal answers</span></h3>
     <div class="qa"><div class="q">1. Define turnaround and wait time.</div><details class="ans"><summary>Answer</summary><div class="a"><b>Tt</b> = completion − arrival = Tw + Tₑ. <b>Tw</b> = ready-but-not-running = Tt − Tₑ.<div class="ref">📖 Explained above: <a href="#ch5-metrics">Metrics ↗</a></div></div></details></div>
     <div class="qa"><div class="q">2. CPU-bound vs I/O-bound — why it matters.</div><details class="ans"><summary>Answer</summary><div class="a">CPU-bound = long bursts, rarely blocks; I/O-bound = short bursts, often waits. Schedulers favour I/O-bound/interactive to stay responsive and keep devices busy.<div class="ref">📖 Explained above: <a href="#ch5-the-problem">The problem ↗</a></div></div></details></div>
@@ -1012,6 +1245,70 @@ flowchart TB
       <span class="cap">TLB hit → instant. TLB miss → walk. Page not present → page fault.</span>
     </div>
 
+    <!-- ===== interactive widget: address translation (VA → TLB → page table → PA) ===== -->
+    <style>
+      .viz-mmu .flow{display:flex;flex-direction:column;gap:8px;margin:8px 0}
+      .viz-mmu .stg{border:2px solid #cfd6e4;border-radius:10px;padding:8px 10px;background:#fff;font-size:13px;opacity:.4;transition:opacity .25s,border-color .25s}
+      .viz-mmu .stg.on{opacity:1;border-color:var(--accent)}
+      .viz-mmu .stg.dim{opacity:.28}
+      .viz-mmu .stg .t{font-weight:700;color:#39435a;font-size:12px;margin-bottom:3px}
+      .viz-mmu .mono{font-family:ui-monospace,Menlo,Consolas,monospace}
+      .viz-mmu .pg{color:#7c3aed;font-weight:700}.viz-mmu .off{color:#0b8a6a;font-weight:700}.viz-mmu .fr{color:#d97706;font-weight:700}
+    </style>
+    <div class="viz viz-mmu" id="viz-mmu">
+      <div class="viz-head">▶ Try it — translate a virtual address <span class="tag">interactive</span></div>
+      <div style="font-size:12.5px;color:var(--muted);margin:2px 0 4px">4 KB pages → offset = low <b>12 bits</b> (3 hex). TLB caches pages <span class="mono">0x01, 0x03</span>; page table: <span class="mono">00→5, 01→2, 02→9, 03→7</span>.</div>
+      <div class="flow">
+        <div class="stg" id="mm-va"><div class="t">1 · Virtual address</div><div class="mono" id="mm-va-b">—</div></div>
+        <div class="stg" id="mm-tlb"><div class="t">2 · TLB — cache of recent translations</div><div id="mm-tlb-b">—</div></div>
+        <div class="stg" id="mm-pt"><div class="t">3 · Page table — the full map in RAM</div><div id="mm-pt-b">—</div></div>
+        <div class="stg" id="mm-pa"><div class="t">4 · Physical address</div><div class="mono" id="mm-pa-b">—</div></div>
+      </div>
+      <div class="controls">
+        <button id="mm-hit">Translate 0x011A4 · TLB hit</button>
+        <button id="mm-miss">Translate 0x021A4 · TLB miss</button>
+        <button class="reset" data-reset="1">↺ Reset</button>
+      </div>
+      <div class="caption" id="mm-cap">Pick an address. The MMU splits it into <span class="pg">page#</span> + <span class="off">offset</span>, looks the page up (TLB first, then the page table), and pastes the resulting <span class="fr">frame#</span> in front of the unchanged offset.</div>
+    </div>
+    <script>
+    (function(){
+      var root=document.getElementById('viz-mmu'); if(!root) return;
+      var reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
+      var PT={0:5,1:2,2:9,3:7}, TLB={1:1,3:1}, timers=[];
+      var st={va:root.querySelector('#mm-va'),tlb:root.querySelector('#mm-tlb'),pt:root.querySelector('#mm-pt'),pa:root.querySelector('#mm-pa')};
+      var b={va:root.querySelector('#mm-va-b'),tlb:root.querySelector('#mm-tlb-b'),pt:root.querySelector('#mm-pt-b'),pa:root.querySelector('#mm-pa-b')};
+      var cap=document.getElementById('mm-cap');
+      function clr(){timers.forEach(clearTimeout);timers=[];['va','tlb','pt','pa'].forEach(function(k){st[k].className='stg';b[k].innerHTML='—';});}
+      function pop(el){if(!reduced&&typeof anime!=='undefined')anime({targets:el,scale:[.97,1],opacity:[.4,1],duration:300,easing:'easeOutQuad'});}
+      function run(page,off){
+        clr();
+        var hit=!!TLB[page], frame=PT[page], pa=(frame*0x1000+off);
+        var hx=function(n,w){var s=n.toString(16).toUpperCase();while(s.length<w)s='0'+s;return '0x'+s;};
+        var steps=[
+          function(){st.va.classList.add('on');b.va.innerHTML=hx(page*0x1000+off,5)+' &nbsp;=&nbsp; <span class="pg">page '+hx(page,2)+'</span> | <span class="off">offset '+hx(off,3)+'</span>';pop(st.va);
+            cap.innerHTML='Split: the top bits are the <span class="pg">page number</span>, the low 12 bits are the <span class="off">offset</span> (never translated).';},
+          function(){st.tlb.classList.add('on');
+            b.tlb.innerHTML=hit?'page <span class="pg">'+hx(page,2)+'</span> is cached → <b style="color:#0b8a6a">HIT</b> → frame <span class="fr">'+hx(frame,1)+'</span>'
+                               :'page <span class="pg">'+hx(page,2)+'</span> not cached → <b style="color:#c0392b">MISS</b> → ask the page table…';pop(st.tlb);
+            cap.innerHTML=hit?'<b>TLB hit</b> — the frame comes straight from the cache; no page-table walk needed (this is the fast path, ~1 cycle).'
+                             :'<b>TLB miss</b> — the MMU must walk the page table in RAM (slower), then cache the result.';},
+          function(){ if(hit){st.pt.classList.add('dim');b.pt.innerHTML='<span class="muted" style="color:var(--muted)">skipped — TLB already had it</span>';}
+            else{st.pt.classList.add('on');b.pt.innerHTML='lookup page <span class="pg">'+hx(page,2)+'</span> → frame <span class="fr">'+hx(frame,1)+'</span> &nbsp;<span class="muted" style="color:var(--muted)">(now cached in the TLB)</span>';pop(st.pt);} },
+          function(){st.pa.classList.add('on');
+            b.pa.innerHTML='<span class="fr">frame '+hx(frame,1)+'</span> « 12 | <span class="off">offset '+hx(off,3)+'</span> &nbsp;=&nbsp; <b>'+hx(pa,4)+'</b>';pop(st.pa);
+            cap.innerHTML='Physical address = <span class="fr">frame</span> shifted up 12 bits, OR-ed with the untouched <span class="off">offset</span> = <b>'+hx(pa,4)+'</b>.';}
+        ];
+        if(reduced||typeof anime==='undefined'){steps.forEach(function(f){f();});}
+        else steps.forEach(function(f,i){timers.push(setTimeout(f,i*700));});
+      }
+      document.getElementById('mm-hit').addEventListener('click',function(){run(0x01,0x1A4);});
+      document.getElementById('mm-miss').addEventListener('click',function(){run(0x02,0x1A4);});
+      root.querySelector('[data-reset]').addEventListener('click',function(){clr();
+        cap.innerHTML='Pick an address. The MMU splits it into <span class="pg">page#</span> + <span class="off">offset</span>, looks the page up (TLB first, then the page table), and pastes the resulting <span class="fr">frame#</span> in front of the unchanged offset.';});
+    })();
+    </script>
+
     <h3 id="ch7-page-table-entry-status-bits">Page-table-entry status bits</h3>
     <p><b>Valid</b> · <b>Dirty</b> (written → must be saved on evict) · <b>Used/Referenced</b> (LRU input) · <b>Locked</b> (don't swap) · <b>Protected/read-only</b> · Cached, Shared.</p>
     <div class="box key"><span class="lab">⭐ Key — dirty vs clean on eviction</span>
@@ -1033,6 +1330,100 @@ flowchart TB
     </table>
     <div class="box warn"><span class="lab">⚠️ Belady's anomaly</span>
       For <b>FIFO</b>, adding <b>more frames can cause more faults</b>. <b>LRU</b> and <b>OPT</b> (stack algorithms) are immune — more frames never hurt. <b>Thrashing</b> = frames &lt; working-set size → constant paging, little real work.</div>
+
+    <!-- ===== interactive widget: page-replacement tracer (FIFO/LRU/OPT + Belady) ===== -->
+    <style>
+      .viz-page .refstr{display:flex;flex-wrap:wrap;gap:5px;margin:4px 0 10px}
+      .viz-page .refstr span{width:26px;height:26px;border:1px solid var(--line);border-radius:6px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;color:var(--muted);background:#fff;font-family:ui-monospace,Menlo,Consolas,monospace}
+      .viz-page .refstr span.cur{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft);color:var(--ink)}
+      .viz-page .refstr span.hit{background:#e7f6ee;color:#0b8a6a;border-color:#9bdcc0}
+      .viz-page .refstr span.fault{background:#fdeaea;color:#c0392b;border-color:#f0b6b6}
+      .viz-page .frames{display:flex;gap:8px;margin:6px 0}
+      .viz-page .frames .fr{width:52px;height:46px;border:2px solid #cfd6e4;border-radius:9px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:17px;color:var(--ink);background:#fff;font-family:ui-monospace,Menlo,Consolas,monospace}
+      .viz-page .frames .fr.empty{color:#c5cbd6}
+      .viz-page .metrics{margin-top:8px;font-size:13px;color:var(--ink)} .viz-page .metrics b{color:var(--accent)}
+      .viz-page .metrics .bel{display:block;margin-top:3px;color:var(--muted);font-size:12.5px}
+    </style>
+    <div class="viz viz-page" id="viz-page">
+      <div class="viz-head">▶ Try it — page replacement &amp; Belady's anomaly <span class="tag">interactive</span></div>
+      <div class="refstr" id="vp-ref"></div>
+      <div class="frames" id="vp-frames"></div>
+      <div class="controls">
+        <span class="grp">algo:</span>
+        <button data-algo="fifo" class="sel">FIFO</button>
+        <button data-algo="lru">LRU</button>
+        <button data-algo="opt">OPT</button>
+        <span class="grp">frames:</span>
+        <button data-frames="3" class="sel">3</button>
+        <button data-frames="4">4</button>
+        <button id="vp-step">▶ Step</button>
+        <button id="vp-play">⏩ Play</button>
+        <button class="reset" data-reset="1">↺ Reset</button>
+      </div>
+      <div class="caption" id="vp-cap">Pick an algorithm, then <b>Step</b> through. Red = page fault (miss), green = hit. Try <b>FIFO</b> with <b>3</b> frames, then switch to <b>4</b> — watch the fault count <i>rise</i>.</div>
+      <div class="metrics" id="vp-metrics"></div>
+    </div>
+    <script>
+    (function(){
+      var root=document.getElementById('viz-page'); if(!root) return;
+      var reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
+      var REF=[1,2,3,4,1,2,5,1,2,3,4,5];
+      var algo='fifo', nf=3, steps=[], idx=-1, timer=null;
+      var refBox=document.getElementById('vp-ref'), frBox=document.getElementById('vp-frames'),
+          cap=document.getElementById('vp-cap'), met=document.getElementById('vp-metrics'),
+          stepB=document.getElementById('vp-step'), playB=document.getElementById('vp-play'),
+          btns=[].slice.call(root.querySelectorAll('.controls button'));
+      function nextUse(from,p){for(var i=from;i<REF.length;i++)if(REF[i]===p)return i;return 1e9;}
+      function trace(a,n){var frames=[],lastUse={},fifo=[],out=[];
+        REF.forEach(function(p,i){var hit=frames.indexOf(p)>=0,ev=null;
+          if(!hit){ if(frames.length<n){frames=frames.concat([p]);fifo.push(p);}
+            else{var v; if(a==='fifo')v=fifo.shift();
+              else if(a==='lru')v=frames.reduce(function(x,y){return lastUse[x]<lastUse[y]?x:y;});
+              else v=frames.reduce(function(x,y){return nextUse(i+1,x)>nextUse(i+1,y)?x:y;});
+              var vi=frames.indexOf(v);frames=frames.slice();frames[vi]=p;ev=v;if(a==='fifo')fifo.push(p);}}
+          lastUse[p]=i; out.push({p:p,hit:hit,frames:frames.slice(),ev:ev});});
+        return out;}
+      function nfaults(a,n){return trace(a,n).filter(function(s){return !s.hit;}).length;}
+      function buildRef(){refBox.innerHTML='';REF.forEach(function(p){var s=document.createElement('span');s.textContent=p;refBox.appendChild(s);});}
+      function buildFrames(){frBox.innerHTML='';for(var i=0;i<nf;i++){var d=document.createElement('div');d.className='fr empty';d.textContent='·';frBox.appendChild(d);}}
+      var label={fifo:'FIFO',lru:'LRU',opt:'OPT'};
+      function summary(){var f=nfaults(algo,nf),html='Total faults — <b>'+label[algo]+', '+nf+' frames: '+f+'</b>';
+        if(algo==='fifo')html+='<span class="bel">Belady check — FIFO 3 frames = '+nfaults('fifo',3)+' faults, 4 frames = '+nfaults('fifo',4)+' faults → more frames, <b>more</b> faults (the anomaly). LRU &amp; OPT never do this.</span>';
+        met.innerHTML=html;}
+      function show(k){
+        var spans=refBox.children, frs=frBox.children;
+        for(var i=0;i<REF.length;i++){var s=spans[i];s.className='';
+          if(i<=k){s.classList.add(steps[i].hit?'hit':'fault');} if(i===k)s.classList.add('cur');}
+        var prev=k>0?steps[k-1].frames:[], now=steps[k].frames, changed=-1;
+        for(var j=0;j<nf;j++){var box=frs[j],val=now[j];
+          box.textContent=(val===undefined?'·':val);box.classList.toggle('empty',val===undefined);
+          if(now[j]!==prev[j])changed=j;}
+        var st=steps[k];
+        cap.innerHTML='<b>'+st.p+'</b> → '+(st.hit?'<b style="color:#0b8a6a">HIT</b> (already resident)':'<b style="color:#c0392b">FAULT</b>'+(st.ev!=null?' — evict '+st.ev+', load '+st.p:' — load '+st.p+' into a free frame'))+'. <span class="muted">faults so far: '+steps.slice(0,k+1).filter(function(s){return !s.hit;}).length+'</span>';
+        if(changed>=0 && !reduced && typeof anime!=='undefined')
+          anime({targets:frs[changed],scale:[.6,1],duration:340,easing:'easeOutBack'});
+        if(k===REF.length-1) summary();
+      }
+      function reset(full){if(timer){clearTimeout(timer);timer=null;playB.textContent='⏩ Play';}
+        steps=trace(algo,nf);idx=-1;buildFrames();
+        var spans=refBox.children;for(var i=0;i<spans.length;i++)spans[i].className='';
+        summary();
+        if(full)cap.innerHTML='Pick an algorithm, then <b>Step</b> through. Red = fault, green = hit.';}
+      function stepOnce(){if(idx<REF.length-1){idx++;show(idx);return true;}return false;}
+      stepB.addEventListener('click',function(){stepOnce();});
+      playB.addEventListener('click',function(){
+        if(timer){clearTimeout(timer);timer=null;playB.textContent='⏩ Play';return;}
+        playB.textContent='⏸ Pause';
+        (function run(){ if(!stepOnce()){playB.textContent='⏩ Play';timer=null;return;} timer=setTimeout(run,820); })();
+      });
+      btns.forEach(function(b){b.addEventListener('click',function(){
+        if(b.dataset.algo){algo=b.dataset.algo;btns.forEach(function(x){if(x.dataset.algo)x.classList.toggle('sel',x===b);});reset(true);}
+        else if(b.dataset.frames){nf=+b.dataset.frames;btns.forEach(function(x){if(x.dataset.frames)x.classList.toggle('sel',x===b);});reset(true);}
+        else if(b.dataset.reset){reset(true);}
+      });});
+      buildRef(); reset(true);
+    })();
+    </script>
 
     <h3 id="ch7-linux-memory-specifics">Linux memory specifics</h3>
     <ul>
@@ -1711,8 +2102,15 @@ flowchart LR
 <!-- ===== Glossary tooltips: hover any abbreviation to see its definition ===== -->
 <style>
   abbr.gl{text-decoration:none;border-bottom:1px dotted #b9c1d0;cursor:help}
-  abbr.gl:hover{border-bottom-color:var(--accent);background:#fff3d6;border-radius:2px}
-  @media print{abbr.gl{border-bottom:none}}
+  abbr.gl:hover,abbr.gl.gl-open{border-bottom-color:var(--accent);background:#fff3d6;border-radius:2px}
+  #gl-tip{position:absolute;z-index:90;max-width:300px;background:#1c2230;color:#fff;font-size:12.5px;line-height:1.45;
+    padding:8px 11px;border-radius:9px;box-shadow:0 8px 24px rgba(0,0,0,.28);pointer-events:none;display:none;
+    opacity:0;transform:translateY(3px);transition:opacity .12s ease,transform .12s ease}
+  #gl-tip.show{opacity:1;transform:none}
+  #gl-tip::after{content:"";position:absolute;left:var(--ax,50%);top:100%;margin-left:-6px;
+    border:6px solid transparent;border-top-color:#1c2230}
+  #gl-tip.below::after{top:auto;bottom:100%;border-top-color:transparent;border-bottom-color:#1c2230}
+  @media print{abbr.gl{border-bottom:none} #gl-tip{display:none!important}}
 </style>
 <script>
 (function(){
@@ -1739,7 +2137,7 @@ flowchart LR
     for(var el=n.parentNode; el && el!==document.body; el=el.parentNode){
       if(el.nodeType!==1) continue;
       if(SKIP[el.tagName]) return true;
-      if(el.id==='glist' || (el.classList && el.classList.contains('mermaid'))) return true;
+      if(el.id==='glist' || (el.classList && (el.classList.contains('mermaid')||el.classList.contains('viz')))) return true;
     }
     return false;
   }
@@ -1758,13 +2156,37 @@ flowchart LR
     while((m=reAll.exec(text))){
       if(m.index>last) frag.appendChild(document.createTextNode(text.slice(last,m.index)));
       var ab=document.createElement('abbr');
-      ab.className='gl'; ab.title=map[m[0]]; ab.textContent=m[0];
+      ab.className='gl'; ab.dataset.def=map[m[0]]; ab.textContent=m[0];
       frag.appendChild(ab);
       last=m.index+m[0].length;
     }
     if(last<text.length) frag.appendChild(document.createTextNode(text.slice(last)));
     node.parentNode.replaceChild(frag,node);
   });
+
+  // 4. Custom hover-card (instant + styled, replaces the slow native title tooltip).
+  var tip=document.createElement('div'); tip.id='gl-tip'; document.body.appendChild(tip);
+  var cur=null, hideT;
+  function place(el){
+    tip.textContent=el.dataset.def; tip.style.display='block';
+    var r=el.getBoundingClientRect(), tw=tip.offsetWidth, th=tip.offsetHeight, vw=document.documentElement.clientWidth;
+    var below=false, top=r.top-th-9; if(top<6){ top=r.bottom+9; below=true; }
+    var left=Math.max(8, Math.min(r.left+r.width/2-tw/2, vw-tw-8));
+    tip.classList.toggle('below',below);
+    tip.style.setProperty('--ax', Math.max(12, Math.min(r.left+r.width/2-left, tw-12))+'px');
+    tip.style.left=(left+window.pageXOffset)+'px'; tip.style.top=(top+window.pageYOffset)+'px';
+    requestAnimationFrame(function(){ tip.classList.add('show'); });
+  }
+  function show(el){ clearTimeout(hideT); if(cur&&cur!==el) cur.classList.remove('gl-open'); cur=el; el.classList.add('gl-open'); place(el); }
+  function hide(){ hideT=setTimeout(function(){ tip.classList.remove('show'); tip.style.display='none'; if(cur){cur.classList.remove('gl-open');cur=null;} },80); }
+  function snap(){ tip.classList.remove('show'); tip.style.display='none'; if(cur){cur.classList.remove('gl-open');cur=null;} }
+  function hit(e){ return e.target.closest ? e.target.closest('abbr.gl') : null; }
+  document.addEventListener('mouseover',function(e){ var el=hit(e); if(el) show(el); });
+  document.addEventListener('mouseout', function(e){ if(hit(e)) hide(); });
+  document.addEventListener('click',   function(e){ var el=hit(e); if(el){ e.preventDefault(); (cur===el&&tip.classList.contains('show'))?hide():show(el); } else if(cur) hide(); });
+  document.addEventListener('keydown', function(e){ if(e.key==='Escape') snap(); });
+  window.addEventListener('scroll', snap, true);
+  window.addEventListener('resize', snap);
 })();
 </script>
 </body>
