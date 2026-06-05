@@ -52,6 +52,15 @@
   .simple{border-left-color:var(--simple); background:var(--simple-bg)} .simple .lab{color:var(--simple)}
   .howto{border-left-color:var(--howto); background:var(--howto-bg)} .howto .lab{color:var(--howto)}
   .warn{border-left-color:var(--warn); background:var(--warn-bg)} .warn .lab{color:var(--warn)}
+  .formula{border-left-color:#7c3aed; background:#f6f3ff} .formula .lab{color:#7c3aed}
+  .formula .fla{display:block; white-space:pre-wrap; font-family:ui-monospace,Menlo,Consolas,monospace; font-size:14px; font-weight:700;
+    color:#2a2150; background:#fff; border:1px solid #e2d9f7; border-radius:8px; padding:9px 11px; margin:3px 0 9px; line-height:1.55}
+  .formula .fvar{padding:5px 0; border-top:1px dashed #e2d9f7; font-size:13.5px}
+  .formula .fvar b{color:#5b21b6; font-family:ui-monospace,Menlo,Consolas,monospace}
+  .formula .fvar .src{display:block; font-size:12.5px; color:#6b21a8; margin-top:1px}
+  .formula .fvar .src::before{content:"↳ where: "; font-weight:700}
+  .formula .ex{margin-top:9px; font-size:13.5px} .formula .ex b{color:#0b8a6a}
+  .formula .adj{margin-top:6px; font-size:13px; color:var(--muted)} .formula .adj b{color:#7c3aed}
   /* code */
   code{background:#eef1f6; padding:1px 5px; border-radius:5px; font-size:.9em;
     font-family:"SF Mono",Menlo,Consolas,monospace}
@@ -516,6 +525,113 @@ flowchart TB
     <div class="box simple"><span class="lab">💡 Why UEFI also boots faster (the 3rd advantage, said correctly)</span>
       BIOS runs in legacy <b>16-bit real mode</b> and initialises devices <b>one after another</b>; UEFI runs in <b>32/64-bit mode</b> with a proper driver model, so it can <b>initialise hardware in parallel</b> and hand off to the loader sooner. So the three wins are: <b>GPT</b> (disks &gt; 2 TB), <b>Secure Boot</b> (only signed binaries boot), and a <b>faster, modular</b> firmware — <i>not</i> "BIOS files run concurrently while UEFI runs parallel".</div>
 
+    <!-- ===== interactive widget: follow the boot through the hardware (4 stages, matches the text) ===== -->
+    <style>
+      .viz-boot .hw{position:relative;display:flex;gap:6px;padding:24px 2px 6px}
+      .viz-boot .comp{flex:1;min-width:0;border:2px solid #e4e8ef;border-radius:10px;padding:7px 3px;text-align:center;background:#fff;opacity:.5;transition:opacity .2s,border-color .2s,box-shadow .2s}
+      .viz-boot .comp .ic{font-size:18px;line-height:1}
+      .viz-boot .comp b{display:block;font-size:11px;color:#39435a;margin-top:2px}
+      .viz-boot .comp small{font-size:9px;color:var(--muted)}
+      .viz-boot .comp.on{opacity:1;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+      .viz-boot .comp.focus{background:var(--accent-soft)}
+      .viz-boot .token{position:absolute;top:1px;left:0;font-size:14px;color:var(--accent);will-change:transform;opacity:0}
+      .viz-boot .tray{font-size:11.5px;color:var(--muted);margin:2px 0 9px;display:flex;flex-wrap:wrap;gap:5px;align-items:center}
+      .viz-boot .tray i{font-style:normal;font-weight:700;color:#c5cbd6;border:1px solid #e4e8ef;border-radius:8px;padding:1px 7px;transition:.2s}
+      .viz-boot .tray i.lit{color:#0b8a6a;background:#e7f6ee;border-color:#9bdcc0}
+      .viz-boot .pair{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+      .viz-boot .heads{margin:2px 0 6px}
+      .viz-boot .hd{font-weight:800;text-align:center;padding:6px;border-radius:8px;font-size:13px}
+      .viz-boot .hd.b{background:#fdebd0;color:#9a5b00} .viz-boot .hd.u{background:#e3edff;color:#1f4fb0}
+      .viz-boot .card{border:2px solid #e4e8ef;border-radius:9px;padding:7px 9px;background:#fff;min-height:46px;transition:border-color .2s,box-shadow .2s}
+      .viz-boot .card .l{font-weight:700;font-size:12.5px;color:#39435a}
+      .viz-boot .card .s{font-size:11px;color:var(--muted);margin-top:2px}
+      .viz-boot .card.diffb{border-color:#d98a00;box-shadow:0 0 0 3px #fcebd2}
+      .viz-boot .card.diffu{border-color:#2f6fed;box-shadow:0 0 0 3px var(--accent-soft)}
+      .viz-boot .card.same{border-color:#0b8a6a;box-shadow:0 0 0 3px #d6f3e6}
+      .viz-boot .same-badge{font-size:10px;font-weight:700;color:#0b8a6a;background:#e7f6ee;border-radius:10px;padding:1px 7px;margin-left:6px}
+      .viz-boot .diff-badge{font-size:10px;font-weight:700;color:#9a5b00;background:#fcebd2;border-radius:10px;padding:1px 7px;margin-left:6px}
+    </style>
+    <div class="viz viz-boot" id="viz-boot">
+      <div class="viz-head">▶ Try it — follow the boot through the hardware <span class="tag">interactive</span></div>
+      <div class="hw" id="vb-hw">
+        <div class="comp" data-c="cpu"><span class="ic">🧠</span><b>CPU</b></div>
+        <div class="comp" data-c="fw"><span class="ic">🔧</span><b>Firmware</b><small>ROM / flash</small></div>
+        <div class="comp" data-c="set"><span class="ic">⚙️</span><b>Settings</b><small>CMOS / NVRAM</small></div>
+        <div class="comp" data-c="disk"><span class="ic">💽</span><b>Boot disk</b><small>MBR / ESP</small></div>
+        <div class="comp" data-c="ram"><span class="ic">🧮</span><b>RAM</b></div>
+        <div class="token" id="vb-tok">▼</div>
+      </div>
+      <div class="tray" id="vb-tray"><span>loads &amp; starts:</span>
+        <i data-k="0">boot code</i> ▸ <i data-k="1">GRUB</i> ▸ <i data-k="2">kernel + initrd</i> ▸ <i data-k="3">systemd (PID 1)</i> ▸ <i data-k="4">login</i></div>
+      <div class="pair heads"><div class="hd b">BIOS</div><div class="hd u">UEFI</div></div>
+      <div class="pair">
+        <div class="card b" id="vb-cb"><div class="l"></div><div class="s"></div></div>
+        <div class="card u" id="vb-cu"><div class="l"></div><div class="s"></div></div>
+      </div>
+      <div class="controls">
+        <button id="vb-back">◀ Back</button>
+        <button class="sel" id="vb-next">▶ Next step</button>
+        <button class="reset" data-reset="1">↺ Reset</button>
+      </div>
+      <div class="caption" id="vb-cap"></div>
+    </div>
+    <script>
+    (function(){
+      var root=document.getElementById('viz-boot'); if(!root) return;
+      var reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
+      // 4 stages = the boot chain as numbered in the text: 1 Firmware · 2 Bootloader · 3 Kernel · 4 INIT→systemd
+      var STEPS=[
+        {t:'Step 1 · Firmware (BIOS / UEFI)',focus:'fw',lit:['cpu','fw','set','disk'],tray:1,same:false,
+         bios:['BIOS · 16-bit firmware in ROM','POST → read boot order from CMOS → read the MBR (first sector)'],
+         uefi:['UEFI · 32/64-bit firmware','POST → read BootOrder from NVRAM → mount the ESP, run a signed .efi'],
+         note:'The CPU starts the <b>firmware</b>. It runs <b>POST</b>, asks the <b>settings chip</b> which disk to boot (<b>BIOS → CMOS</b>, <b>UEFI → NVRAM</b>), and fetches the boot code from the <b>disk</b>: <b>BIOS</b> reads the tiny <b>MBR</b> (first 512-byte sector, ≤2 TB, unsigned), <b>UEFI</b> reads a signed <code>.efi</code> from the <b>ESP</b> on a GPT disk. <i>This is where the two differ most.</i>'},
+        {t:'Step 2 · Bootloader (GRUB)',focus:'ram',lit:['disk','ram'],tray:2,same:false,
+         bios:['MBR stub chainloads GRUB in stages','boot.img → core.img → GRUB, into RAM'],
+         uefi:['Firmware runs shimx64.efi → grubx64.efi','the signed .efi loads GRUB into RAM'],
+         note:'The bootloader <b>GRUB</b> is brought into <b>RAM</b>. <b>BIOS</b> has only ~446 bytes in the MBR, so it <b>chainloads</b> GRUB in stages; <b>UEFI</b> just runs the GRUB <code>.efi</code> directly. GRUB then reads <code>grub.cfg</code> and gets ready to load the kernel. <i>(Last step where they differ.)</i>'},
+        {t:'Step 3 · Kernel start-up',focus:'cpu',lit:['ram','cpu'],tray:3,same:true,
+         bios:['GRUB loads vmlinuz + initrd into RAM','kernel runs: sets up memory + MMU, mounts initrd → real root'],
+         uefi:['GRUB loads vmlinuz + initrd into RAM','kernel runs: sets up memory + MMU, mounts initrd → real root'],
+         note:'<b>From here BIOS and UEFI are identical.</b> GRUB loads the <b>kernel</b> (<code>vmlinuz</code>) and the <b>initrd</b> into RAM and jumps in. The kernel runs on the <b>CPU</b>: it sets up memory and the <b>MMU</b>, uses the <b>initrd</b> to load just enough drivers, then mounts the <b>real root filesystem</b>.'},
+        {t:'Step 4 · INIT → systemd',focus:'cpu',lit:['cpu'],tray:5,same:true,
+         bios:['Kernel starts PID 1 = init','systemd activates default.target → login / GUI'],
+         uefi:['Kernel starts PID 1 = init','systemd activates default.target → login / GUI'],
+         note:'The kernel starts the very first process — <b>PID 1 = init</b>. The classic init was <b>SysV</b> (numbered <b>runlevels</b> run by serial shell scripts, no dependency management); modern Linux uses <b>systemd</b> (units &amp; <b>targets</b>, started <b>in parallel</b> with real dependencies). systemd activates the <b>default target</b> and brings up your <b>login prompt / desktop</b> — boot complete.'}
+      ];
+      var intro='Click <b>▶ Next step</b> to follow the boot through the hardware: the <b>▼ marker</b> shows where the action is, components light up as they’re used, and the chain above fills in <b>what gets loaded &amp; started</b>. <span style="color:#9a5b00;font-weight:700">BIOS</span> and <span style="color:#1f4fb0;font-weight:700">UEFI</span> differ in steps 1–2, then <span style="color:#0b8a6a;font-weight:700">converge</span> at the kernel.';
+      var hw=document.getElementById('vb-hw'), tok=document.getElementById('vb-tok'), comps={},
+          cap=document.getElementById('vb-cap'), cb=document.getElementById('vb-cb'), cu=document.getElementById('vb-cu'),
+          trayI=[].slice.call(root.querySelectorAll('.tray i')), cur=-1;
+      [].slice.call(hw.querySelectorAll('.comp')).forEach(function(c){comps[c.dataset.c]=c;});
+      function tokenTo(c){var el=comps[c]; if(!el) return; var x=el.offsetLeft+el.offsetWidth/2-tok.offsetWidth/2;
+        if(reduced||typeof anime==='undefined'){tok.style.transform='translateX('+x+'px)';return;}
+        anime.remove(tok); anime({targets:tok,translateX:x,duration:460,easing:'easeInOutCubic'});}
+      function render(animate){
+        if(cur<0){Object.keys(comps).forEach(function(k){comps[k].classList.remove('on','focus');});
+          trayI.forEach(function(t){t.classList.remove('lit');}); tok.style.opacity='0';
+          cb.className='card b';cu.className='card u'; cb.querySelector('.l').textContent='';cb.querySelector('.s').textContent='';
+          cu.querySelector('.l').textContent='';cu.querySelector('.s').textContent=''; cap.innerHTML=intro; return;}
+        var s=STEPS[cur]; tok.style.opacity='1';
+        Object.keys(comps).forEach(function(k){comps[k].classList.toggle('on',s.lit.indexOf(k)>=0);comps[k].classList.toggle('focus',k===s.focus);});
+        tokenTo(s.focus);
+        trayI.forEach(function(t,i){t.classList.toggle('lit', i<s.tray);});
+        cb.querySelector('.l').innerHTML=s.bios[0]; cb.querySelector('.s').innerHTML=s.bios[1];
+        cu.querySelector('.l').innerHTML=s.uefi[0]; cu.querySelector('.s').innerHTML=s.uefi[1];
+        cb.className='card b '+(s.same?'same':'diffb'); cu.className='card u '+(s.same?'same':'diffu');
+        cap.innerHTML='<b>'+s.t+(s.same?' <span class="same-badge">BIOS = UEFI</span>':' <span class="diff-badge">differs</span>')+'</b><br>'+s.note;
+        if(animate && !reduced && typeof anime!=='undefined'){
+          anime({targets:[cb,cu],scale:[.97,1],opacity:[.6,1],duration:300,delay:anime.stagger(80),easing:'easeOutQuad'});
+          if(comps[s.focus]) anime({targets:comps[s.focus],scale:[.93,1],duration:360,easing:'easeOutBack'});
+        }
+      }
+      document.getElementById('vb-next').addEventListener('click',function(){if(cur<STEPS.length-1){cur++;render(true);}});
+      document.getElementById('vb-back').addEventListener('click',function(){if(cur>=0){cur--;render(false);}});
+      root.querySelector('[data-reset]').addEventListener('click',function(){cur=-1;render(false);});
+      window.addEventListener('resize',function(){if(cur>=0)tokenTo(STEPS[cur].focus);});
+      render(false);
+    })();
+    </script>
+
     <h3 id="ch3-step-4-init-systemd">Step 4 — INIT → systemd</h3>
     <p><b>Classic SysV init:</b> fixed <b>runlevels</b>, each running per-runlevel <b>shell scripts</b>. Problems: <b>no dependency management</b>, <b>no ordering</b> (race conditions), big distro-specific scripts, <b>serial/slow</b>.</p>
     <table>
@@ -649,6 +765,14 @@ journalctl -u hello.service                  # full logs</code></pre>
       One waiter (CPU) serving many tables (processes): while one table reads the menu (I/O wait), the waiter serves another. More tables = the waiter is idle less often.</div>
     <div class="box simple"><span class="lab">💡 Where 1 − pⁿ comes from</span>
       Each process is waiting on I/O a fraction <b>p</b> of the time. If the <b>n</b> processes wait <b>independently</b>, the chance that <b>all n wait at the same moment</b> is <b>p × p × … = pⁿ</b> — and that's the <b>only</b> time the CPU has nothing to do. So <b>CPU busy = 1 − pⁿ</b>. It pays off with <b>diminishing returns</b>: at p = 0.5 you get 50% → 75% → 94% for n = 1, 2, 4 — each extra process only closes part of the <i>remaining</i> idle gap.</div>
+    <div class="box formula"><span class="lab">🧮 Formula breakdown — CPU utilization</span>
+      <span class="fla">CPU utilization = 1 − pⁿ</span>
+      <div class="fvar"><b>p</b> — fraction of time <i>one</i> process spends <b>waiting on I/O</b> (a number 0–1).<span class="src">given in the task — "waits on I/O 80 % of the time" → p = 0.8.</span></div>
+      <div class="fvar"><b>n</b> — <b>degree of multiprogramming</b>: how many processes sit in memory at once.<span class="src">given, or the value you sweep to see the trend.</span></div>
+      <div class="fvar"><b>1 − pⁿ</b> — fraction of time the <b>CPU is busy</b> (×100 for a %).<span class="src">the unknown you solve for.</span></div>
+      <div class="ex"><b>Plug in:</b> p = 0.8, n = 4 → 1 − 0.8⁴ = 1 − 0.4096 = <b>0.59 ≈ 59 % busy</b>.</div>
+      <div class="adj"><b>Adjust:</b> more I/O-bound work (bigger p) needs more processes for the same utilization. It's a <b>single-CPU</b> model that assumes the n processes wait independently; with several cores, reason per core.</div>
+    </div>
 
     <h3 id="ch4-program-vs-process">Program vs process</h3>
     <p>A <b>program</b> is a static compiled binary on disk; a <b>process</b> is a <b>running instance</b> in memory with its own state (registers, PC, memory, open files), an <b>owner</b> (effective UID), and an <b>environment</b>. One program → many processes. Tools: <code>ps aux</code>/<code>ps -ef</code>, <code>top</code>, <code>env</code>, <code>jobs</code>/<code>bg</code>/<code>fg</code> (after <kbd>Ctrl-Z</kbd>).</p>
@@ -965,6 +1089,18 @@ stateDiagram-v2
       </div>
       <span class="cap"><b>Turnaround Tt</b> = completion − arrival = <b>Tw + Tₑ</b>. <b>Wait Tw</b> = ready-but-not-running. <b>WCET</b> = worst-case execution time.</span>
     </div>
+    <div class="box formula"><span class="lab">🧮 Formula breakdown — scheduling metrics (per job)</span>
+      <span class="fla">Turnaround  Tt = completion − arrival = Tw + Tₑ
+Waiting     Tw = Tt − Tₑ      (turnaround minus CPU time)
+Response       = first-time-on-CPU − arrival
+Average        = (sum over all jobs) ÷ N</span>
+      <div class="fvar"><b>completion</b> — when the job <b>finishes</b>.<span class="src">read it off the <b>Gantt chart</b> you draw for the algorithm.</span></div>
+      <div class="fvar"><b>arrival Tₐ</b> — when the job entered the ready queue.<span class="src">given (often <b>0</b> for every job — then Tt = completion).</span></div>
+      <div class="fvar"><b>Tₑ</b> — the job's <b>CPU burst / service time</b> (how much CPU it needs).<span class="src">given, per job.</span></div>
+      <div class="fvar"><b>N</b> — number of jobs.<span class="src">count them.</span></div>
+      <div class="ex"><b>Plug in:</b> a job with arrival 0, burst Tₑ = 4, finishing at t = 12 → Tt = 12 − 0 = <b>12</b>, Tw = 12 − 4 = <b>8</b>.</div>
+      <div class="adj"><b>Adjust:</b> if arrivals differ, never shortcut Tt = completion — always subtract arrival. Check whether the question asks for average <b>turnaround</b> or average <b>waiting</b> (different numbers); SJF minimises both when all jobs arrive together.</div>
+    </div>
     <table>
       <thead><tr><th>System type</th><th>Main goals</th></tr></thead>
       <tbody>
@@ -995,6 +1131,18 @@ stateDiagram-v2
       <li><b>Rate Monotonic (RM):</b> static priority — <b>shortest period → highest priority</b>. Guaranteed (sufficient, not necessary) if <code>U = Σ Cₑ/Tᵣ ≤ n(2^(1/n) − 1)</code>, which → <b>ln 2 ≈ 0.69</b> as n→∞. Fixed at compile time → up to ~30% CPU wasted.</li>
       <li><b>Earliest Deadline First (EDF):</b> dynamic — run the <b>nearest-deadline</b> task. Feasible iff <b>U ≤ 1</b> (more efficient than RM).</li>
     </ul>
+    <div class="box formula"><span class="lab">🧮 Formula breakdown — real-time schedulability</span>
+      <span class="fla">U = Σ (Cᵢ ÷ Tᵢ)                       ← total CPU utilization
+RM guaranteed if  U ≤ n·(2^(1/n) − 1)   (→ 0.69 as n→∞)
+EDF feasible  iff  U ≤ 1</span>
+      <div class="fvar"><b>Cᵢ</b> — task i's <b>compute time</b> per release (its WCET).<span class="src">given, per task.</span></div>
+      <div class="fvar"><b>Tᵢ</b> — task i's <b>period</b> = how often it must run (deadline assumed = period).<span class="src">given, per task.</span></div>
+      <div class="fvar"><b>n</b> — number of tasks.<span class="src">count them.</span></div>
+      <div class="fvar"><b>U</b> — total utilization.<span class="src">you compute it: add up every Cᵢ ÷ Tᵢ.</span></div>
+      <div class="fvar"><b>n·(2^(1/n) − 1)</b> — the RM bound for n tasks.<span class="src">plug n in: 1 → 1.00, 2 → 0.83, 3 → 0.78, → 0.69.</span></div>
+      <div class="ex"><b>Plug in:</b> T1(C10,T20), T2(C10,T50), T3(C5,T30) → U = 10/20 + 10/50 + 5/30 = 0.5 + 0.2 + 0.167 = <b>0.867</b>. Bound (n=3) = 3(2^(1/3) − 1) ≈ <b>0.78</b>. 0.867 &gt; 0.78 → <b>not guaranteed by RM</b>.</div>
+      <div class="adj"><b>Adjust:</b> the RM bound is <b>sufficient only</b> — failing it means "draw the actual timeline to check", not "impossible". EDF's <b>U ≤ 1</b> is exact (iff). RM priority order = shortest period first, regardless of C.</div>
+    </div>
 
     <h3 id="ch5-linux-scheduling">Linux scheduling</h3>
     <div class="diagram">
@@ -1046,6 +1194,12 @@ flowchart TB
       .viz-gantt .axis span{position:absolute;transform:translateX(-50%)}
       .viz-gantt .metrics{margin-top:10px;font-size:13px;color:var(--ink)}
       .viz-gantt .metrics b{color:var(--accent)}
+      .viz-gantt .calc{border-collapse:collapse;margin:4px 0 7px;font-size:12.5px}
+      .viz-gantt .calc th,.viz-gantt .calc td{border:1px solid var(--line);padding:3px 9px;text-align:center}
+      .viz-gantt .calc th{background:#f4f6fa;color:var(--muted);font-weight:700;font-size:10.5px;line-height:1.2}
+      .viz-gantt .calc td:first-child{font-weight:700}
+      .viz-gantt .avgcalc{font-size:12.5px;line-height:1.8;font-family:ui-monospace,Menlo,Consolas,monospace;color:var(--ink)}
+      .viz-gantt .avgcalc b{color:var(--accent)}
     </style>
     <div class="viz viz-gantt" id="viz-sched">
       <div class="viz-head">▶ Try it — schedule four jobs, three ways <span class="tag">interactive</span></div>
@@ -1082,10 +1236,16 @@ flowchart TB
         while(queue.length&&g++<999){var id=queue.shift(),run=Math.min(q,rem[id]);
           segs.push({id:id,start:t,len:run,color:col[id]});t+=run;rem[id]-=run;if(rem[id]>0)queue.push(id);}
         return segs;}
-      function metrics(segs){var comp={};segs.forEach(function(s){comp[s.id]=s.start+s.len;});
-        var tt=jobs.map(function(j){return comp[j.id];}),avg=tt.reduce(function(a,b){return a+b;},0)/jobs.length;
-        return jobs.map(function(j){return j.id+'→'+comp[j.id];}).join(' · ')+
-          ' &nbsp;|&nbsp; avg turnaround = <b>'+(Math.round(avg*100)/100)+'</b>';}
+      function metrics(segs){
+        var comp={}; segs.forEach(function(s){comp[s.id]=Math.max(comp[s.id]||0,s.start+s.len);}); // completion = its last segment's end
+        var N=jobs.length, r2=function(x){return Math.round(x*100)/100;};
+        var rows=jobs.map(function(j){var tt=comp[j.id]; return {id:j.id,burst:j.burst,c:comp[j.id],tt:tt,w:tt-j.burst};}); // arrival=0 → turnaround=completion
+        var sumT=rows.reduce(function(a,r){return a+r.tt;},0), sumW=rows.reduce(function(a,r){return a+r.w;},0);
+        var tbl='<table class="calc"><tr><th>job</th><th>burst Tₑ</th><th>completion</th><th>turnaround<br>= compl − 0</th><th>waiting<br>= turn − Tₑ</th></tr>'+
+          rows.map(function(r){return '<tr><td>'+r.id+'</td><td>'+r.burst+'</td><td>'+r.c+'</td><td>'+r.tt+'</td><td>'+r.w+'</td></tr>';}).join('')+'</table>';
+        var avg='<div class="avgcalc"><b>avg turnaround</b> = ('+rows.map(function(r){return r.tt;}).join(' + ')+') ÷ '+N+' = '+sumT+' ÷ '+N+' = <b>'+r2(sumT/N)+'</b><br>'+
+          '<b>avg waiting</b> = ('+rows.map(function(r){return r.w;}).join(' + ')+') ÷ '+N+' = '+sumW+' ÷ '+N+' = <b>'+r2(sumW/N)+'</b></div>';
+        return '<div style="font-size:11.5px;color:var(--muted);margin-bottom:2px">all jobs arrive at <b>t = 0</b>, so turnaround = completion:</div>'+tbl+avg;}
       function ticks(segs){var set={0:1};segs.forEach(function(s){set[s.start+s.len]=1;});
         axis.innerHTML=Object.keys(set).map(function(v){return '<span style="left:'+(v/T*100)+'%">'+v+'</span>';}).join('');}
       function render(name){
@@ -1178,6 +1338,14 @@ echo 1234 | sudo tee limited-10/cgroup.procs     # move PID 1234 into it</code><
 
     <h3 id="ch6-cpu-controller-cfs-tie-back-to-sched">cpu controller &amp; CFS (tie-back to SCHED)</h3>
     <p>CFS tracks each task's <b>vruntime</b> and runs the smallest-vruntime task. cgroups hook in: <b><code>cpu.weight</code></b> changes how vruntime accrues (relative share); <b><code>cpu.max = "$MAX $PERIOD"</code></b> is an <b>absolute bandwidth limit</b> — e.g. <code>"20000 100000"</code> = 20% of one core (the group is <b>throttled</b> once over budget in the period). A <b>threaded</b> cgroup (<code>echo threaded &gt; cgroup.type</code>) splits one process's <b>threads</b> across cgroups for fine-grained accounting.</p>
+    <div class="box formula"><span class="lab">🧮 Formula breakdown — cgroup CPU cap</span>
+      <span class="fla">cpu.max = "QUOTA PERIOD"   →   CPU share = QUOTA ÷ PERIOD</span>
+      <div class="fvar"><b>QUOTA</b> — microseconds of CPU the group may use per window.<span class="src">the first number — you set it.</span></div>
+      <div class="fvar"><b>PERIOD</b> — length of the accounting window, in microseconds.<span class="src">the second number — default 100000 (= 100 ms).</span></div>
+      <div class="fvar"><b>QUOTA ÷ PERIOD</b> — fraction of <b>one core</b> (×100 for %); &gt; 1 means more than one core.<span class="src">the cap you compute.</span></div>
+      <div class="ex"><b>Plug in:</b> "20000 100000" → 20000 ÷ 100000 = 0.2 = <b>20 % of one core</b>. "200000 100000" → 2.0 = <b>two full cores</b>.</div>
+      <div class="adj"><b>Adjust:</b> same ratio with smaller numbers = same cap but smoother (finer) throttling. <code>cpu.weight</code> is a <b>relative</b> share under contention, <i>not</i> an absolute cap — don't mix them up.</div>
+    </div>
 
     <h3 id="ch6-self-test-click-to-reveal-answers">Self-test <span class="pill">click to reveal answers</span></h3>
     <div class="qa"><div class="q">1. Why is <code>nice</code> insufficient for resource control?</div><details class="ans"><summary>Answer</summary><div class="a">Only relative (no global meaning), not strictly enforced, you can change only your own processes, and it covers only CPU. cgroups = hierarchical, strict, multi-resource.<div class="ref">📖 Explained above: <a href="#ch6-why-nice-isn-t-enough">Why nice isn't enough ↗</a></div></div></details></div>
@@ -1228,6 +1396,20 @@ flowchart LR
     </div>
     <div class="box simple"><span class="lab">💡 In plain terms</span>
       A virtual address is like "<b>apartment building #5, room 204</b>". The <b>building number</b> (page) is looked up to find the <b>real street address</b> (frame); the <b>room number</b> (offset) stays the same.</div>
+    <div class="box formula"><span class="lab">🧮 Formula breakdown — paging / address split</span>
+      <span class="fla">offset bits  k = log₂(page size)
+number of pages = 2^(address bits − k) = address space ÷ page size
+page number = high bits   (= address ÷ page size)
+offset      = low k bits  (= address mod page size, copied unchanged)
+physical address = frame number × page size + offset</span>
+      <div class="fvar"><b>page size</b> — the fixed page/frame size in bytes.<span class="src">given — 4 KB = 2¹² = 4096, so k = 12.</span></div>
+      <div class="fvar"><b>address bits</b> — width of the virtual address.<span class="src">given — e.g. 32-bit.</span></div>
+      <div class="fvar"><b>k</b> — number of offset bits.<span class="src">compute = log₂(page size).</span></div>
+      <div class="fvar"><b>frame number</b> — where the page lives in RAM.<span class="src">looked up in the <b>page table</b> (or TLB) — given as the mapping.</span></div>
+      <div class="fvar"><b>page number / offset</b> — the two halves of the address you're translating.<span class="src">split the given address: high bits vs low k bits.</span></div>
+      <div class="ex"><b>Plug in:</b> 4 KB pages, 32-bit address → k = 12, page bits = 32 − 12 = 20 → <b>2²⁰ = 1 048 576 pages</b>. Address 0x021A4 with frame 0x9 → PA = 0x9 × 0x1000 + 0x1A4 = <b>0x91A4</b>.</div>
+      <div class="adj"><b>Adjust:</b> double the page size → offset gains 1 bit, page number loses 1 bit (half as many pages). Hex shortcut: every <b>4 KB</b> page = exactly <b>3 hex digits</b> of offset.</div>
+    </div>
 
     <h3 id="ch7-mmu-tlb-making-it-fast">MMU &amp; TLB (making it fast)</h3>
     <p>A software <b>table walk</b> needs <b>two</b> memory reads per access (page table + data). The <b>MMU</b> does translation + protection in hardware; the <b>TLB</b> caches recent translations (~64 entries, content-addressable).</p>
@@ -1671,6 +1853,18 @@ flowchart LR
     </div>
     <div class="box key"><span class="lab">⭐ Classic calc (1 KB block, 4 B pointer)</span>
       Pointers/block = 1024 ÷ 4 = <b>256</b>. Total blocks = 12 + 256 + 256² + 256³ = <b>16 843 020</b> → at 1 KB each ≈ <b>16 GB</b> (the triple-indirect tier dominates).</div>
+    <div class="box formula"><span class="lab">🧮 Formula breakdown — max file size (i-node)</span>
+      <span class="fla">pointers per block  ppb = block size ÷ pointer size
+max blocks = (#direct) + ppb + ppb² + ppb³
+max file size = max blocks × block size</span>
+      <div class="fvar"><b>block size</b> — disk block size in bytes.<span class="src">given — e.g. 1 KB = 1024.</span></div>
+      <div class="fvar"><b>pointer size</b> — bytes per block pointer.<span class="src">given — e.g. 4 B.</span></div>
+      <div class="fvar"><b>ppb</b> — how many pointers fit in one block.<span class="src">compute = block size ÷ pointer size (1024 ÷ 4 = 256).</span></div>
+      <div class="fvar"><b>#direct</b> — direct block pointers stored in the i-node.<span class="src">given — classically 12.</span></div>
+      <div class="fvar"><b>tiers</b> — single (ppb), double (ppb²), triple (ppb³) indirect.<span class="src">include only the tiers the problem lists.</span></div>
+      <div class="ex"><b>Plug in:</b> 1 KB block, 4 B pointer, 12 direct + 1/2/3 indirect → ppb = 256 → 12 + 256 + 256² + 256³ = <b>16 843 020 blocks</b> × 1 KB ≈ <b>16 GB</b>.</div>
+      <div class="adj"><b>Adjust:</b> drop tiers the problem doesn't mention (single + double only → no ppb³ term). The <b>top tier dominates</b> the sum — the rest is almost rounding. A bigger block helps twice: more pointers per block <i>and</i> bigger blocks.</div>
+    </div>
 
     <h3 id="ch10-disk-space-mgmt-consistency">Disk-space mgmt &amp; consistency</h3>
     <ul>
@@ -1757,6 +1951,16 @@ flowchart TB
     </table>
     <div class="box key"><span class="lab">⭐ How parity works (XOR)</span>
       <code>P = D1 ⊕ D2 ⊕ … ⊕ Dn</code>. If one disk dies, XOR the <b>survivors (incl. P)</b> to recompute the lost strip. <b>RAID 4</b> = one dedicated parity disk → <b>write bottleneck</b>; <b>RAID 5</b> distributes parity; <b>RAID 6</b> adds a second parity block → survives <b>two</b> failures.</div>
+    <div class="box formula"><span class="lab">🧮 Formula breakdown — RAID parity (XOR)</span>
+      <span class="fla">P = D1 ⊕ D2 ⊕ … ⊕ Dn               ← build the parity strip
+recover lost Dx = (XOR of all surviving data strips) ⊕ P</span>
+      <div class="fvar"><b>D1 … Dn</b> — the data strip on each data disk (a bit pattern).<span class="src">given.</span></div>
+      <div class="fvar"><b>⊕ (XOR)</b> — compare the two bits <b>column by column</b>: 1 if they differ, 0 if the same.<span class="src">a fixed bitwise operation.</span></div>
+      <div class="fvar"><b>P</b> — the parity strip.<span class="src">compute = XOR of all the data strips.</span></div>
+      <div class="fvar"><b>Dx</b> — the strip on the failed disk.<span class="src">the unknown you rebuild from the survivors + P.</span></div>
+      <div class="ex"><b>Plug in:</b> D1 = 1011, D2 = 0110, D3 = 1100 → P = 1011 ⊕ 0110 ⊕ 1100 = <b>0001</b>. If D2 dies: D2 = D1 ⊕ D3 ⊕ P = 1011 ⊕ 1100 ⊕ 0001 = <b>0110</b> ✓.</div>
+      <div class="adj"><b>Adjust:</b> XOR is order-free, so "survivors ⊕ P" rebuilds <i>any</i> single lost strip — data <b>or</b> parity. RAID 6 keeps a second parity (Q) → survives <b>two</b> failures (Q uses different maths).</div>
+    </div>
 
     <h3 id="ch11-overlayfs-lfs">OverlayFS &amp; LFS</h3>
     <div class="diagram">
