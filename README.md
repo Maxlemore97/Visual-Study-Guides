@@ -5,6 +5,21 @@ sticky table of contents, colour-coded callouts (goal / key idea / simplified /
 how-to / warning) and syntax-highlighted code. Open any file in a browser; no
 build step, no dependencies.
 
+The repo's home page is **[`index.html`](./index.html)** — a landing page that links
+all guides (it's what GitHub Pages serves at the root).
+
+## Repo layout
+
+```
+index.html                       landing page (links every guide)
+<Module> - Zusammenfassung.html  the guides (one self-contained file each)
+tooling/                         how to build a new guide
+  Lernguide-Rezept.md            the recipe (German, 8 phases)
+  template.html                  all-in-one component template
+  build_html.py                  Markdown → HTML generator
+Referenz Material/               source recipes & notes (gitignored)
+```
+
 ## Guides
 
 | Topic | Language | Open |
@@ -31,23 +46,24 @@ open "Betriebssysteme - Zusammenfassung.html"   # macOS (use xdg-open on Linux)
 
 ## Adding a new guide
 
-The full, battle-tested method lives in **[`Lernguide-Rezept.md`](./Lernguide-Rezept.md)**
+The full, battle-tested method lives in **[`tooling/Lernguide-Rezept.md`](./tooling/Lernguide-Rezept.md)**
 (German) — an 8-phase recipe for turning a module's slides into an interactive guide.
 Two reusable starting points come with it:
 
-- **[`template.html`](./template.html)** — an all-in-one demo template showing every
-  reusable component (callouts, formula/framework cards, self-test, glossary tooltips,
-  Mermaid, dark/compact toggle, answer-box + export, a widget stub). Copy it to
-  `<Module> - Zusammenfassung.html` and fill in your chapters.
-- **[`build_html.py`](./build_html.py)** — a Markdown-first generator: write
-  `<Module> - Zusammenfassung.md`, run `python build_html.py "<Module> - Zusammenfassung.md"`,
-  and it emits the HTML using the same CSS/JS shell as `template.html` (so the two stay
-  in sync). The HTML is a build artifact — edit the Markdown, not the HTML.
+- **[`tooling/template.html`](./tooling/template.html)** — an all-in-one demo template
+  showing every reusable component (callouts, formula/framework cards, self-test,
+  glossary tooltips, Mermaid, dark/compact toggle, answer-box + export, a widget stub).
+  Copy it to `<Module> - Zusammenfassung.html` and fill in your chapters.
+- **[`tooling/build_html.py`](./tooling/build_html.py)** — a Markdown-first generator:
+  write `<Module> - Zusammenfassung.md`, run
+  `python tooling/build_html.py "<Module> - Zusammenfassung.md"`, and it emits the HTML
+  using the same CSS/JS shell as `template.html` (so the two stay in sync). The HTML is
+  a build artifact — edit the Markdown, not the HTML.
 
 Then:
 
 1. Add the new `<Module> - Zusammenfassung.html` to the repo root.
-2. Add a row to the **Guides** table above.
+2. Add a card to **[`index.html`](./index.html)** and a row to the **Guides** table above.
 3. Commit — that's it.
 
 ## License

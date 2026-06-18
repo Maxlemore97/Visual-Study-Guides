@@ -1,0 +1,102 @@
+<!doctype html>
+<!--
+  Landing-Page / GitHub-Pages-Startseite. Verlinkt die Guides (liegen im Repo-Root,
+  daher unveränderte URLs). Beim Hinzufügen eines Guides: eine <a class="card"> ergänzen.
+-->
+<html lang="de" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Visual Study Guides</title>
+<style>
+:root{
+  --bg:#f7f8fa; --panel:#ffffff; --ink:#1c2230; --muted:#5a6678; --line:#e4e8ef;
+  --accent:#2f6fed; --accent-soft:#eaf1ff;
+}
+[data-theme="dark"]{
+  --bg:#0e131c; --panel:#161d2b; --ink:#e6eaf2; --muted:#94a0b4; --line:#27303f;
+  --accent:#5b9bff; --accent-soft:#1b2740;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+header{display:flex;align-items:center;gap:1rem;max-width:980px;margin:0 auto;padding:2.4rem 1.4rem 1rem}
+header .logo{font-size:2rem}
+header h1{font-size:1.7rem;margin:0}
+header p{color:var(--muted);margin:.2rem 0 0}
+header button{margin-left:auto;cursor:pointer;border:1px solid var(--line);background:var(--panel);
+  color:var(--ink);border-radius:8px;padding:.4rem .8rem;font-size:13px;align-self:flex-start}
+main{max-width:980px;margin:0 auto;padding:1rem 1.4rem 4rem}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:1rem;margin-top:1rem}
+a.card{display:block;text-decoration:none;color:inherit;background:var(--panel);
+  border:1px solid var(--line);border-left:5px solid var(--accent);border-radius:12px;
+  padding:1.1rem 1.2rem;transition:transform .15s,box-shadow .15s,border-color .15s}
+a.card:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.10);border-left-color:#7a3df0}
+a.card h2{font-size:1.1rem;margin:0 0 .3rem}
+a.card .meta{font-size:.85rem;color:var(--muted)}
+a.card .go{margin-top:.7rem;font-size:.85rem;color:var(--accent);font-weight:600}
+.foot{margin-top:2.4rem;color:var(--muted);font-size:.9rem;border-top:1px solid var(--line);padding-top:1.2rem}
+.foot a{color:var(--accent)}
+</style>
+</head>
+<body>
+
+<header>
+  <span class="logo">📚</span>
+  <div>
+    <h1>Visual Study Guides</h1>
+    <p>Eigenständige, interaktive HTML-Lernguides — einfach öffnen, kein Build nötig.</p>
+  </div>
+  <button id="btn-dark" title="Hell/Dunkel">🌙 Dark</button>
+</header>
+
+<main>
+  <div class="grid">
+    <a class="card" href="Betriebssysteme%20-%20Zusammenfassung.html">
+      <h2>Betriebssysteme</h2>
+      <div class="meta">🇩🇪 Deutsch · Operating Systems</div>
+      <div class="go">Öffnen →</div>
+    </a>
+    <a class="card" href="CT%202%20-%20Zusammenfassung.html">
+      <h2>CT 2</h2>
+      <div class="meta">🇩🇪 Deutsch · Computertechnik 2</div>
+      <div class="go">Öffnen →</div>
+    </a>
+    <a class="card" href="IIS2%20-%20Zusammenfassung.html">
+      <h2>IIS2</h2>
+      <div class="meta">🇩🇪 Deutsch · Data Warehousing, Big Data &amp; AI</div>
+      <div class="go">Öffnen →</div>
+    </a>
+    <a class="card" href="Physik%20Engines%20-%20Zusammenfassung.html">
+      <h2>Physik Engines</h2>
+      <div class="meta">🇩🇪 Deutsch · Physics Engines</div>
+      <div class="go">Öffnen →</div>
+    </a>
+    <a class="card" href="SWEN2%20-%20Zusammenfassung.html">
+      <h2>SWEN2</h2>
+      <div class="meta">🇩🇪 Deutsch · Software Engineering 2</div>
+      <div class="go">Öffnen →</div>
+    </a>
+  </div>
+
+  <p class="foot">
+    Einen neuen Guide bauen? Siehe das Rezept und die Vorlagen in
+    <a href="https://github.com/Maxlemore97/Visual-Study-Guides/tree/main/tooling"><code>tooling/</code></a>
+    (<code>Lernguide-Rezept.md</code>, <code>template.html</code>, <code>build_html.py</code>).
+  </p>
+</main>
+
+<script>
+(function(){
+  var root = document.documentElement;
+  if (localStorage.getItem('theme') === 'dark') root.setAttribute('data-theme','dark');
+  document.getElementById('btn-dark').addEventListener('click', function(){
+    var dark = root.getAttribute('data-theme') === 'dark';
+    root.setAttribute('data-theme', dark ? 'light' : 'dark');
+    localStorage.setItem('theme', dark ? 'light' : 'dark');
+  });
+})();
+</script>
+
+</body>
+</html>

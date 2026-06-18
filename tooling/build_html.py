@@ -5,10 +5,10 @@ build_html.py — Generator-Starter für interaktive Lernguides.
     Markdown = QUELLE, HTML = ARTEFAKT. Das HTML NICHT von Hand editieren —
     Inhalt geht ins Markdown, Struktur/Widgets in diesen Generator, dann neu bauen.
 
-Aufruf:
-    python build_html.py "<Modul> - Zusammenfassung.md"
-    python build_html.py "<Modul> - Zusammenfassung.md" -o out.html
-    python build_html.py            # nimmt das erste "*Zusammenfassung.md" im Ordner
+Aufruf (aus dem Repo-Root):
+    python tooling/build_html.py "<Modul> - Zusammenfassung.md"
+    python tooling/build_html.py "<Modul> - Zusammenfassung.md" -o out.html
+    python tooling/build_html.py    # nimmt das erste "*Zusammenfassung.md" im aktuellen Ordner
 
 Was dieser Starter abdeckt (der wiederverwendbare KERN):
   - Markdown → HTML: Überschriften, Absätze, Listen, Tabellen, Code-Fences,
@@ -274,7 +274,9 @@ def main():
     if args.source:
         src = pathlib.Path(args.source)
     else:
-        cands = sorted(here.glob("*Zusammenfassung.md"))
+        # Quellen liegen im Repo-Root (Generator lebt in tooling/) → cwd, dann Root durchsuchen.
+        cands = sorted(pathlib.Path.cwd().glob("*Zusammenfassung.md")) \
+            or sorted(here.parent.glob("*Zusammenfassung.md"))
         if not cands:
             sys.exit("Keine Quelle angegeben und kein '*Zusammenfassung.md' gefunden.")
         src = cands[0]
