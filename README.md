@@ -31,7 +31,22 @@ open "Betriebssysteme - Zusammenfassung.html"   # macOS (use xdg-open on Linux)
 
 ## Adding a new guide
 
-1. Drop the new `.html` file into the repo root.
+The full, battle-tested method lives in **[`Lernguide-Rezept.md`](./Lernguide-Rezept.md)**
+(German) — an 8-phase recipe for turning a module's slides into an interactive guide.
+Two reusable starting points come with it:
+
+- **[`template.html`](./template.html)** — an all-in-one demo template showing every
+  reusable component (callouts, formula/framework cards, self-test, glossary tooltips,
+  Mermaid, dark/compact toggle, answer-box + export, a widget stub). Copy it to
+  `<Module> - Zusammenfassung.html` and fill in your chapters.
+- **[`build_html.py`](./build_html.py)** — a Markdown-first generator: write
+  `<Module> - Zusammenfassung.md`, run `python build_html.py "<Module> - Zusammenfassung.md"`,
+  and it emits the HTML using the same CSS/JS shell as `template.html` (so the two stay
+  in sync). The HTML is a build artifact — edit the Markdown, not the HTML.
+
+Then:
+
+1. Add the new `<Module> - Zusammenfassung.html` to the repo root.
 2. Add a row to the **Guides** table above.
 3. Commit — that's it.
 

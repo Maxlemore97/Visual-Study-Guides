@@ -1,0 +1,536 @@
+<!doctype html>
+<!--
+  ============================================================================
+  ALL-IN-ONE DEMO-TEMPLATE für interaktive Lernguides
+  ============================================================================
+  Dieses File ist die KANONISCHE REFERENZ für einen "<Modul> - Zusammenfassung.html".
+  Es zeigt jede wiederverwendbare Komponente genau einmal. Vorgehen:
+    1. Kopiere dieses File nach "<Modul> - Zusammenfassung.html".
+    2. Ersetze MODUL/Titel, baue Kapitel als <section class="chapter" id="chN">.
+    3. Lösche Komponenten, die du nicht brauchst.
+  Oder (Markdown-first): build_html.py liest die <style>/<script>-Shell hieraus,
+  damit Template und Generator nicht auseinanderlaufen — siehe Lernguide-Rezept.md.
+  Inhalt unten ist NUR Demo-/Platzhalterstoff.
+  ============================================================================
+-->
+<html lang="de" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MODUL — Zusammenfassung (Template)</title>
+
+<!-- Optional: KaTeX für gerenderte Mathe in der Prosa. Auskommentiert lassen,
+     wenn das Modul qualitativ ist (SWEN2-Fall). Rechner-Karten nutzen Unicode-
+     Monospace statt KaTeX, damit der Glossar-TreeWalker nicht kollidiert.
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+-->
+
+<style>
+/* ---- Farb- & Layout-Variablen (Light) ---------------------------------- */
+:root{
+  --bg:#f7f8fa; --panel:#ffffff; --ink:#1c2230; --muted:#5a6678; --line:#e4e8ef;
+  --accent:#2f6fed; --accent-soft:#eaf1ff;
+  --goal:#7a3df0;  --goal-bg:#f3edff;
+  --key:#c98a00;   --key-bg:#fff7e6;
+  --simple:#0b8a6a;--simple-bg:#e9f9f3;
+  --howto:#1f6feb; --howto-bg:#eaf1ff;
+  --warn:#d23b3b;  --warn-bg:#fdeced;
+  --formula:#7c3aed;--formula-bg:#f6f3ff;
+  --frame:#0e7490; --frame-bg:#e7f6fb;
+  --code-bg:#0f1525; --code-ink:#e6e9f2;
+  --maxw:920px; --sidebar:270px;
+}
+/* ---- Dark-Mode (über <html data-theme="dark">) ------------------------- */
+[data-theme="dark"]{
+  --bg:#0e131c; --panel:#161d2b; --ink:#e6eaf2; --muted:#94a0b4; --line:#27303f;
+  --accent:#5b9bff; --accent-soft:#1b2740;
+  --goal:#b69bff;  --goal-bg:#241a3a;
+  --key:#e8b84a;   --key-bg:#2c2410;
+  --simple:#4fd1a5;--simple-bg:#0f2a23;
+  --howto:#5b9bff; --howto-bg:#16243a;
+  --warn:#ff7b7b;  --warn-bg:#2e1517;
+  --formula:#b69bff;--formula-bg:#211a36;
+  --frame:#52c5dd; --frame-bg:#0f2730;
+  --code-bg:#0a0f1a; --code-ink:#e6e9f2;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+
+/* ---- Topbar mit Toggles ------------------------------------------------ */
+#topbar{position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:.6rem;
+  padding:.5rem .9rem;background:var(--panel);border-bottom:1px solid var(--line)}
+#topbar .brand{font-weight:700;margin-right:auto}
+#topbar button{cursor:pointer;border:1px solid var(--line);background:var(--bg);
+  color:var(--ink);border-radius:8px;padding:.35rem .7rem;font-size:13px}
+#topbar button:hover{background:var(--accent-soft)}
+
+/* ---- Layout: sticky Sidebar + main ------------------------------------- */
+.wrap{display:flex;align-items:flex-start}
+nav.toc{position:sticky;top:49px;height:calc(100vh - 49px);overflow:auto;
+  flex:0 0 var(--sidebar);background:var(--panel);border-right:1px solid var(--line);padding:14px 12px}
+nav.toc h2{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:6px 8px 8px}
+nav.toc input{width:100%;padding:.4rem .6rem;margin:0 0 .6rem;border:1px solid var(--line);
+  border-radius:8px;background:var(--bg);color:var(--ink);font-size:13px}
+nav.toc a{display:block;padding:7px 10px;border-radius:8px;color:var(--ink);
+  text-decoration:none;font-size:14px;margin:2px 0}
+nav.toc a:hover{background:var(--accent-soft)}
+nav.toc a.active{background:var(--accent);color:#fff;font-weight:600}
+nav.toc .num{display:inline-block;width:24px;color:var(--muted);font-variant-numeric:tabular-nums}
+nav.toc a.active .num{color:#dbe6ff}
+main{flex:1 1 auto;min-width:0;padding:26px 34px 120px;max-width:calc(var(--maxw) + 68px);margin:0 auto}
+.title{font-size:30px;margin:.2em 0 .1em}
+.sub{color:var(--muted);margin:0 0 1em}
+
+/* ---- Kapitel & Typografie --------------------------------------------- */
+section.chapter{padding-top:18px;border-top:1px solid var(--line);margin-top:34px}
+section:first-of-type{border-top:none;margin-top:8px}
+h2.chap{font-size:26px;margin:8px 0 4px}
+h3{font-size:19px;margin:26px 0 8px}
+h4{font-size:16px;margin:18px 0 6px;color:var(--muted)}
+p{margin:8px 0}
+ul,ol{margin:8px 0 8px 4px;padding-left:22px}
+li{margin:4px 0}
+a{color:var(--accent)}
+
+/* ---- Callout-Boxen ----------------------------------------------------- */
+.box{border:1px solid var(--line);border-left-width:5px;border-radius:10px;
+  padding:11px 14px;margin:14px 0;background:var(--panel)}
+.box .lab{font-weight:700;font-size:12.5px;text-transform:uppercase;
+  letter-spacing:.04em;display:block;margin-bottom:4px}
+.box.goal  {border-left-color:var(--goal);  background:var(--goal-bg)}   .box.goal   .lab{color:var(--goal)}
+.box.key   {border-left-color:var(--key);   background:var(--key-bg)}    .box.key    .lab{color:var(--key)}
+.box.simple{border-left-color:var(--simple);background:var(--simple-bg)} .box.simple .lab{color:var(--simple)}
+.box.howto {border-left-color:var(--howto); background:var(--howto-bg)}  .box.howto  .lab{color:var(--howto)}
+.box.warn  {border-left-color:var(--warn);  background:var(--warn-bg)}   .box.warn   .lab{color:var(--warn)}
+
+/* ---- Formelkarte (quantitative Module) -------------------------------- */
+.box.formula{border-left-color:var(--formula);background:var(--formula-bg)}
+.box.formula .lab{color:var(--formula)}
+.box.formula .fla{display:block;font-family:ui-monospace,Menlo,Consolas,monospace;
+  font-size:14px;font-weight:700;white-space:pre-wrap;background:var(--panel);
+  border:1px solid var(--line);border-radius:8px;padding:9px 11px;margin:3px 0 9px}
+.box.formula .fvar{padding:5px 0;border-top:1px dashed var(--line);font-size:14px}
+.box.formula .fvar b{font-family:ui-monospace,Menlo,Consolas,monospace;color:var(--formula)}
+.box.formula .src{display:block;font-size:12.5px;color:var(--muted)}
+.box.formula .src::before{content:"↳ wo: ";font-weight:700}
+.box.formula .ex{margin-top:9px;font-size:14px}
+.box.formula .adj{margin-top:6px;font-size:13px;color:var(--muted)}
+
+/* ---- Framework-/Entscheidungsregel-Karte (qualitative Module) --------- */
+.box.framework{border-left-color:var(--frame);background:var(--frame-bg)}
+.box.framework .lab{color:var(--frame)}
+.box.framework dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:3px 10px;font-size:14px}
+.box.framework dt{font-weight:700;color:var(--frame)}
+.box.framework dd{margin:0}
+
+/* ---- Selbsttest: Frage + einklappbare Antwort ------------------------- */
+.qa{margin:.9em 0 .35em;padding:.7em 1em;background:var(--panel);border:1px solid var(--line);border-radius:10px}
+.qa .q{font-weight:500}
+details.ans{margin:.35em 0 .7em;border:1px solid var(--line);border-radius:10px;background:var(--panel);overflow:hidden}
+details.ans summary{cursor:pointer;padding:.5em 1em;font-weight:600;color:var(--accent);user-select:none;list-style:none}
+details.ans summary::-webkit-details-marker{display:none}
+details.ans[open] summary{border-bottom:1px solid var(--line)}
+details.ans .a{padding:.6em 1em}
+.ref{border-top:1px dashed var(--line);margin-top:9px;padding-top:6px;font-size:13px;color:var(--muted)}
+
+/* ---- Tabellen ---------------------------------------------------------- */
+table{border-collapse:collapse;width:100%;margin:14px 0;font-size:14.5px;background:var(--panel)}
+th,td{border:1px solid var(--line);padding:8px 11px;text-align:left;vertical-align:top}
+thead th{background:var(--accent-soft)}
+tbody tr:nth-child(even) td{background:var(--bg)}
+
+/* ---- Code -------------------------------------------------------------- */
+code{background:var(--accent-soft);padding:1px 5px;border-radius:5px;font-size:.9em;
+  font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace}
+pre{background:var(--code-bg);color:var(--code-ink);padding:14px 16px;border-radius:10px;
+  overflow:auto;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:13.5px;line-height:1.5}
+pre code{background:none;padding:0;color:inherit;font-size:inherit}
+
+/* ---- Diagramme / Mermaid ---------------------------------------------- */
+figure.diagram{margin:16px 0;padding:14px;background:var(--panel);border:1px solid var(--line);
+  border-radius:12px;text-align:center;overflow:auto}
+figure.diagram figcaption{font-size:.82em;color:var(--muted);margin-top:6px}
+pre.mermaid{background:none;color:inherit;padding:0;text-align:center}
+
+/* ---- Glossar + Hover-Card --------------------------------------------- */
+#glist .g{margin:5px 0;padding:6px 0;border-bottom:1px dashed var(--line)}
+#glist .g b{color:var(--accent)}
+abbr.gl{text-decoration:none;border-bottom:1px dotted var(--accent);cursor:help}
+#gl-tip{position:fixed;z-index:100;max-width:300px;display:none;background:var(--panel);
+  color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:8px 12px;
+  font-size:13px;line-height:1.4;box-shadow:0 6px 20px rgba(0,0,0,.18)}
+
+/* ---- Antwortbox + Export-Leiste --------------------------------------- */
+textarea.myans{display:block;width:100%;min-height:64px;margin:.4em 0 0;padding:.5em .7em;
+  border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);
+  font:14px/1.5 inherit;resize:vertical}
+#exportbar{position:fixed;right:16px;bottom:16px;z-index:40;display:flex;gap:.5rem}
+#exportbar button{cursor:pointer;border:none;background:var(--accent);color:#fff;
+  border-radius:10px;padding:.6rem 1rem;font-size:14px;box-shadow:0 6px 20px rgba(0,0,0,.18)}
+
+/* ---- Interaktive Widgets: gemeinsame Basis ---------------------------- */
+.viz{border:1px solid var(--line);border-radius:12px;background:var(--panel);padding:14px;margin:16px 0}
+.viz .stage{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.viz .node{flex:1 1 90px;min-width:90px;text-align:center;padding:10px 8px;border:1px solid var(--line);
+  border-radius:10px;background:var(--bg);font-size:14px;transition:background .25s,color .25s,transform .25s}
+.viz .node.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.viz .controls{display:flex;gap:.5rem;align-items:center}
+.viz .controls button{cursor:pointer;border:1px solid var(--line);background:var(--bg);color:var(--ink);
+  border-radius:8px;padding:.35rem .8rem;font-size:13px}
+.viz .cap{display:block;color:var(--muted);font-size:13px;margin-top:8px}
+
+/* ---- Kompakt-Modus: Prosa/Analogien/Widgets ausblenden (Repetition) --- */
+html.compact .box.simple,
+html.compact .box.howto,
+html.compact figure.diagram,
+html.compact .viz,
+html.compact textarea.myans{display:none}
+
+/* ---- Druck: interaktive Controls verstecken --------------------------- */
+@media print{
+  #topbar,#exportbar,nav.toc,.viz .controls,textarea.myans{display:none}
+  .wrap{display:block}
+  main{max-width:none;padding:0}
+}
+
+/* ---- Responsive: Sidebar oben stapeln --------------------------------- */
+@media(max-width:860px){
+  .wrap{display:block}
+  nav.toc{position:static;height:auto;width:auto;border-right:none;border-bottom:1px solid var(--line)}
+  main{padding:18px}
+}
+</style>
+</head>
+
+<body>
+
+<!-- ====================== TOPBAR ====================== -->
+<div id="topbar">
+  <span class="brand">MODUL — Zusammenfassung</span>
+  <button id="btn-compact" title="Prosa/Analogien ausblenden">📋 Kompakt</button>
+  <button id="btn-dark" title="Hell/Dunkel umschalten">🌙 Dark</button>
+</div>
+
+<div class="wrap">
+
+  <!-- ====================== SIDEBAR / TOC ====================== -->
+  <nav class="toc" id="toc">
+    <h2>Inhalt</h2>
+    <input id="navsearch" type="search" placeholder="Kapitel filtern…">
+    <a href="#howto"><span class="num">ℹ️</span>So benutzt du das</a>
+    <a href="#ch1"><span class="num">1</span>Demo-Kapitel</a>
+    <a href="#glossar"><span class="num">📖</span>Glossar</a>
+    <!-- Pro Kapitel eine Zeile: <a href="#chN"><span class="num">N</span>Titel</a> -->
+  </nav>
+
+  <!-- ====================== INHALT ====================== -->
+  <main>
+    <h1 class="title">MODUL — Visual Study Guide</h1>
+    <p class="sub">Prüfungskontext, Aufbau und Bedienhinweise (eine Zeile).</p>
+
+    <!-- ---- "So benutzt du das" ---- -->
+    <section id="howto">
+      <h2 class="chap">ℹ️ So benutzt du das</h2>
+      <div class="box simple">
+        <span class="lab">💡 Worum geht's</span>
+        Kurz erklären: Aufbau, wie man navigiert (Sidebar, Suche), Dark/Kompakt-Toggle,
+        Selbsttest mit Antwortboxen, „Export for grading" → zurück an Claude.
+      </div>
+    </section>
+
+    <!-- ====================== DEMO-KAPITEL ====================== -->
+    <section class="chapter" id="ch1">
+      <h2 class="chap">1. Demo-Kapitel</h2>
+
+      <!-- Die fünf Kern-Callouts -->
+      <div class="box goal"><span class="lab">🎯 Am wichtigsten</span>Die EINE Kernidee des Kapitels.</div>
+      <div class="box key"><span class="lab">⭐ Key</span>Prüfungskritischer Fakt / Faustregel.</div>
+      <div class="box simple"><span class="lab">💡 Einfach gesagt</span>Eine Alltags-Analogie.</div>
+      <div class="box howto"><span class="lab">🛠️ How-to</span>Schritte oder ein <code>befehl --beispiel</code>.</div>
+      <div class="box warn"><span class="lab">⚠️ Stolperstein</span>Häufiger Fehler / Verwechslung.</div>
+
+      <h3 id="ch1-formel">Formelkarte (quantitatives Modul)</h3>
+      <!-- Nie nur die Formel: Ausdruck + Variablen-Herkunft + Plug-in + Adjust -->
+      <div class="box formula">
+        <span class="lab">🧮 Formel — CPU-Auslastung</span>
+        <span class="fla">Auslastung = 1 − pⁿ</span>
+        <div class="fvar"><b>p</b> — Anteil I/O-Wartezeit pro Prozess
+          <span class="src">in der Aufgabe gegeben, sonst 0.8 annehmen</span></div>
+        <div class="fvar"><b>n</b> — Grad der Multiprogrammierung
+          <span class="src">gegeben, oder durchvariiert für den Trend</span></div>
+        <div class="ex"><b>Einsetzen:</b> p = 0.8, n = 4 → <b>0.59 ≈ 59 % beschäftigt</b></div>
+        <div class="adj"><b>Adjust:</b> mehr I/O-lastige Arbeit braucht mehr Prozesse für dieselbe Auslastung.</div>
+      </div>
+
+      <h3 id="ch1-framework">Framework-Karte (qualitatives Modul)</h3>
+      <!-- Wo PE eine Formel hat, hat SWEN2 eine Regel/ein Framework-Element -->
+      <div class="box framework">
+        <span class="lab">🧩 Framework — Definition of Done</span>
+        <dl>
+          <dt>Was</dt><dd>Geteilte Checkliste, wann ein Increment „fertig" ist.</dd>
+          <dt>Wann</dt><dd>Bei jedem PBI vor dem Sprint Review.</dd>
+          <dt>Beispiel</dt><dd>Code reviewed, getestet, deployt, dokumentiert.</dd>
+          <dt>Falle</dt><dd>DoD ≠ Akzeptanzkriterien (pro Story) und ≠ DoR.</dd>
+          <dt>vs</dt><dd>DoR = bereit zum Start; DoD = fertig zum Abschluss.</dd>
+        </dl>
+      </div>
+
+      <h3>Tabelle &amp; Code</h3>
+      <table>
+        <thead><tr><th>Begriff</th><th>Bedeutung</th></tr></thead>
+        <tbody>
+          <tr><td>Spalte A</td><td>Wert</td></tr>
+          <tr><td>Spalte B</td><td>Wert</td></tr>
+        </tbody>
+      </table>
+      <pre><code>$ beispiel --flag wert   # was der Befehl tut</code></pre>
+
+      <h3>Diagramm (Mermaid)</h3>
+      <figure class="diagram">
+        <pre class="mermaid">
+flowchart LR
+  A["Eingabe"] --> B["Verarbeitung"]
+  B --> C["Ausgabe"]
+        </pre>
+        <figcaption>Mermaid rendert <code>&lt;pre class="mermaid"&gt;</code> automatisch.</figcaption>
+      </figure>
+
+      <h3>Interaktives Widget (user-getaktet, feature-checked)</h3>
+      <!-- Nur für dynamische Konzepte (Schritte/Zustand/Zeit/Vorher-Nachher). -->
+      <div class="viz viz-demo">
+        <div class="stage">
+          <div class="node" data-i="0">Schritt 1</div>
+          <div class="node" data-i="1">Schritt 2</div>
+          <div class="node" data-i="2">Schritt 3</div>
+        </div>
+        <div class="controls">
+          <button data-act="prev">‹ Zurück</button>
+          <button data-act="next">Weiter ›</button>
+          <button data-act="reset">Reset</button>
+        </div>
+        <span class="cap">Caption beschreibt, was am aktiven Schritt passiert.</span>
+      </div>
+
+      <h3>Selbsttest</h3>
+      <div class="qa">
+        <div class="q">F1. Eine Beispiel-Frage zum Kapitel?</div>
+      </div>
+      <details class="ans">
+        <summary>Antwort</summary>
+        <div class="a">
+          Die Musterantwort.
+          <div class="ref">📖 Oben erklärt: <a href="#ch1-formel">Formelkarte ↗</a></div>
+        </div>
+      </details>
+      <!-- Antwortbox (textarea.myans) wird per Script unter jede .qa injiziert. -->
+    </section>
+
+    <!-- ====================== GLOSSAR ====================== -->
+    <section class="chapter" id="glossar">
+      <h2 class="chap">📖 Glossar</h2>
+      <p class="sub">Die Suche oben filtert; jede Abkürzung im Text bekommt automatisch eine Hover-Card.</p>
+      <div id="glist">
+        <p class="g"><b>CPU</b> — Central Processing Unit; führt die Instruktionen aus.</p>
+        <p class="g"><b>DoD</b> — Definition of Done; geteilte Fertig-Checkliste.</p>
+        <p class="g"><b>TDD</b> — Test-Driven Development; Test zuerst, dann Code.</p>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- ====================== EXPORT-LEISTE ====================== -->
+<div id="exportbar">
+  <button id="btn-export">⬇︎ Export for grading</button>
+</div>
+
+<!-- ====================== CDN-LIBS ====================== -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/animejs@3.2.2/lib/anime.min.js"></script>
+
+<script>
+/* ====================== MERMAID ====================== */
+if (typeof mermaid !== 'undefined') {
+  mermaid.initialize({ startOnLoad:true, theme:'neutral' });
+}
+
+/* ====================== DARK / KOMPAKT TOGGLE (localStorage) ====================== */
+(function(){
+  var root = document.documentElement;
+  if (localStorage.getItem('theme') === 'dark') root.setAttribute('data-theme','dark');
+  if (localStorage.getItem('compact') === '1') root.classList.add('compact');
+
+  var d = document.getElementById('btn-dark');
+  if (d) d.addEventListener('click', function(){
+    var dark = root.getAttribute('data-theme') === 'dark';
+    root.setAttribute('data-theme', dark ? 'light' : 'dark');
+    localStorage.setItem('theme', dark ? 'light' : 'dark');
+  });
+  var c = document.getElementById('btn-compact');
+  if (c) c.addEventListener('click', function(){
+    root.classList.toggle('compact');
+    localStorage.setItem('compact', root.classList.contains('compact') ? '1' : '0');
+  });
+})();
+
+/* ====================== TOC SCROLL-SPY (IntersectionObserver) ====================== */
+(function(){
+  var links = {};
+  document.querySelectorAll('nav.toc a[href^="#"]').forEach(function(a){
+    links[a.getAttribute('href').slice(1)] = a;
+  });
+  var io = new IntersectionObserver(function(entries){
+    entries.forEach(function(e){
+      var a = links[e.target.id];
+      if (!a) return;
+      if (e.isIntersecting){
+        Object.values(links).forEach(function(x){ x.classList.remove('active'); });
+        a.classList.add('active');
+      }
+    });
+  }, { rootMargin:'-20% 0px -70% 0px' });
+  document.querySelectorAll('main section[id]').forEach(function(s){ io.observe(s); });
+
+  /* Sidebar-Filter */
+  var ns = document.getElementById('navsearch');
+  if (ns) ns.addEventListener('input', function(){
+    var q = ns.value.toLowerCase();
+    document.querySelectorAll('nav.toc a').forEach(function(a){
+      a.style.display = a.textContent.toLowerCase().includes(q) ? '' : 'none';
+    });
+  });
+})();
+
+/* ====================== GLOSSAR-SUCHE ====================== */
+/* (Filtert die #glist-Zeilen über dasselbe Suchfeld nicht — eigenes Feld bei Bedarf.) */
+
+/* ====================== GLOSSAR-TOOLTIPS (TreeWalker → abbr.gl + #gl-tip) ====================== */
+(function(){
+  var glist = document.getElementById('glist');
+  if (!glist) return;
+
+  /* ACRONYM → Definition aus den #glist-Zeilen bauen */
+  var defs = {};
+  glist.querySelectorAll('.g').forEach(function(p){
+    var b = p.querySelector('b'); if (!b) return;
+    var def = p.textContent.replace(/^[^—-]*[—-]\s*/,'').trim();
+    b.textContent.split(/\s*\/\s*/).forEach(function(term){
+      term = term.trim();
+      if (/^[A-Z][A-Z0-9]{1,9}$/.test(term)) defs[term] = def; /* nur Akronym-Formen */
+    });
+  });
+  var terms = Object.keys(defs).sort(function(a,b){ return b.length - a.length; }); /* längste zuerst */
+  if (!terms.length) return;
+  var re = new RegExp('\\b(' + terms.map(function(t){ return t.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }).join('|') + ')\\b');
+
+  var SKIP = /^(PRE|CODE|KBD|SCRIPT|STYLE|TEXTAREA|A|ABBR|SUMMARY|NAV|INPUT|SVG)$/;
+  function skip(node){
+    for (var el = node.parentNode; el; el = el.parentNode){
+      if (el.nodeType !== 1) continue;
+      if (SKIP.test(el.tagName)) return true;
+      if (el.id === 'glist' || el.classList.contains('mermaid') || el.classList.contains('viz')) return true;
+    }
+    return false;
+  }
+  /* erst Textknoten sammeln, dann ersetzen (Walker nicht währenddessen mutieren) */
+  var walker = document.createTreeWalker(document.querySelector('main'), NodeFilter.SHOW_TEXT, null);
+  var todo = [], n;
+  while ((n = walker.nextNode())) { if (re.test(n.nodeValue) && !skip(n)) todo.push(n); }
+  todo.forEach(function(node){
+    var frag = document.createDocumentFragment(), rest = node.nodeValue, m;
+    while ((m = rest.match(re))){
+      if (m.index > 0) frag.appendChild(document.createTextNode(rest.slice(0, m.index)));
+      var ab = document.createElement('abbr');
+      ab.className = 'gl'; ab.setAttribute('data-def', defs[m[1]]); ab.textContent = m[1];
+      frag.appendChild(ab);
+      rest = rest.slice(m.index + m[1].length);
+    }
+    if (rest) frag.appendChild(document.createTextNode(rest));
+    node.parentNode.replaceChild(frag, node);
+  });
+
+  /* eine Hover-Card statt nativem title (schnell, gestylt, viewport-geklemmt) */
+  var tip = document.createElement('div'); tip.id = 'gl-tip'; document.body.appendChild(tip);
+  function show(ab){
+    tip.textContent = ab.getAttribute('data-def');
+    tip.style.display = 'block';
+    var r = ab.getBoundingClientRect();
+    var top = r.top - tip.offsetHeight - 8;
+    if (top < 8) top = r.bottom + 8;
+    var left = Math.min(Math.max(8, r.left), window.innerWidth - tip.offsetWidth - 8);
+    tip.style.top = top + 'px'; tip.style.left = left + 'px';
+  }
+  function hide(){ tip.style.display = 'none'; }
+  document.querySelectorAll('abbr.gl').forEach(function(ab){
+    ab.addEventListener('mouseenter', function(){ show(ab); });
+    ab.addEventListener('mouseleave', hide);
+    ab.addEventListener('click', function(){ tip.style.display === 'block' ? hide() : show(ab); });
+  });
+  window.addEventListener('scroll', hide, true);
+  window.addEventListener('keydown', function(e){ if (e.key === 'Escape') hide(); });
+})();
+
+/* ====================== ANTWORTBOXEN + EXPORT ====================== */
+(function(){
+  var slug = location.pathname.split('/').pop() || 'guide';
+  document.querySelectorAll('.qa').forEach(function(qa, i){
+    var ta = document.createElement('textarea');
+    ta.className = 'myans';
+    ta.placeholder = 'Deine Antwort…';
+    var keyId = 'ans:' + slug + ':' + i;
+    ta.value = localStorage.getItem(keyId) || '';
+    ta.addEventListener('input', function(){ localStorage.setItem(keyId, ta.value); });
+    qa.appendChild(ta);
+  });
+
+  var btn = document.getElementById('btn-export');
+  if (btn) btn.addEventListener('click', function(){
+    var out = ['# ' + document.title, ''];
+    var curChap = '';
+    document.querySelectorAll('main section[id]').forEach(function(sec){
+      var h = sec.querySelector('h2.chap'); if (h) curChap = h.textContent.trim();
+      sec.querySelectorAll('.qa').forEach(function(qa){
+        var q = (qa.querySelector('.q') || {textContent:''}).textContent.replace(/\s+/g,' ').trim();
+        var a = (qa.querySelector('textarea.myans') || {value:''}).value.trim();
+        if (!q) return;
+        out.push('## ' + curChap, '**Q:** ' + q, '**My answer:** ' + (a || '_(leer)_'), '');
+      });
+    });
+    var md = out.join('\n');
+    if (navigator.clipboard) navigator.clipboard.writeText(md);
+    var blob = new Blob([md], {type:'text/markdown'});
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = slug.replace(/\.html?$/,'') + '-my-answers.md';
+    a.click();
+  });
+})();
+
+/* ====================== WIDGET-STUB (user-getaktet, progressive enhancement) ====================== */
+(function(){
+  var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  document.querySelectorAll('.viz-demo').forEach(function(viz){
+    var nodes = [].slice.call(viz.querySelectorAll('.node'));
+    var i = 0;
+    function render(){
+      nodes.forEach(function(nd, k){ nd.classList.toggle('active', k === i); });
+      var act = nodes[i];
+      if (act && !reduced && typeof anime !== 'undefined'){
+        anime.remove(act);
+        anime({ targets: act, scale: [1.06, 1], duration: 260, easing: 'easeOutQuad' });
+      }
+    }
+    viz.querySelector('[data-act="next"]').addEventListener('click', function(){ i = Math.min(i+1, nodes.length-1); render(); });
+    viz.querySelector('[data-act="prev"]').addEventListener('click', function(){ i = Math.max(i-1, 0); render(); });
+    viz.querySelector('[data-act="reset"]').addEventListener('click', function(){ i = 0; render(); });
+    render();
+  });
+})();
+</script>
+
+</body>
+</html>
