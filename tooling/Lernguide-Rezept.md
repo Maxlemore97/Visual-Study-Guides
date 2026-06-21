@@ -14,16 +14,19 @@ modul-spezifischen Entscheidungen fallen in **Phase 0** und unter „Pro Modul a
 > Generator-Starter in [`build_html.py`](./build_html.py).
 
 ## Was am Ende herauskommt
-- **`<Modul> - Zusammenfassung.md`** — ein kombinierter Lernguide. Pro Thema drei
+- **`<Modul> - Zusammenfassung.md`** — ein kombinierter Lernguide. Pro Thema zwei
   Unterabschnitte: **Erklärung** (Diagramme-als-Text, zentrale Begriffe/Befehle,
-  Alltags-Analogien), **Übungen** (nur Fragen), **Übungen — Lösungen**.
+  Alltags-Analogien) und **Übungen** (Fragen, **mit der Lösung als Dropdown direkt
+  unter jeder Frage**). ⚠️ Der frühere separate Sammelblock „Übungen — Lösungen" ist
+  **deprecated** — er driftet leicht und zwingt zum Hin- und Herspringen; die Lösung
+  gehört unter ihre Frage (siehe HTML-Baustein „Einklappbare Lösungen").
 - **`<Modul> - Zusammenfassung.html`** — die interaktive Version: klebrige Sidebar mit
   Scroll-Spy, Diagramme, farbige Callouts, Klick-zum-Aufdecken der Lösungen, ein
   **Antwortfeld unter jeder Frage + „Export for grading"**, eine **Mock-Prüfung**,
   **Lab-Fragen** in ihren Kapiteln, ein **durchsuchbares Glossar**, **Sprunglinks von
   jeder Antwort zum exakten Abschnitt**, **Hover-Tooltips auf jeder Abkürzung** und
   **kleine, nutzer-getaktete Widgets** für die dynamischen Konzepte.
-- *(optional)* **`Spicker.tex`** — ein dichter Ein-A4-Spickzettel (nur wenn in der
+- *(optional)* **`Spicker.tex`** — ein dichter A4-Spickzettel (nur wenn in der
   Prüfung erlaubt — **vorher abklären**).
 
 ## Vor dem Start
@@ -74,10 +77,11 @@ selbsterklärend machen:
 > „Iteration", „Story" ↔ „PBI") auf eine Leit-Notation, Abweichungen als ⚠️ vermerken.
 
 **Phase 3 — in interaktives HTML umwandeln (via Generator).**
-> „Erzeuge das HTML aus dem Markdown mit `build_html.py`. Mermaid für Diagramme, farbige
-> Callouts (🎯 wichtigste, ⭐ Key, 💡 Analogie, 🛠️ How-to, ⚠️ Gotcha, 🧮 Formelkarte /
-> 🧩 Framework-Karte), Vergleichstabellen, einklappbare Lösungen, klebrige Sidebar mit
-> Scroll-Spy und durchsuchbarem Glossar. Markdown ist die einzige Quelle, HTML ist
+> „Erzeuge das HTML aus dem Markdown mit `build_html.py`. **CSS-Box-Diagramme statt ASCII/Mermaid**
+> (` ```flow `/` ```compare3 `/` ```entity `/` ```formula `), **Tabellendaten als echte `<table>`**,
+> **sparsame** farbige Callouts (nur 🎯 wichtigste / ⭐ Key / ⚠️ Gotcha als Akzent — Begriffsdefinitionen
+> als `#### Term` + Prosa, NICHT als 🧩-Box), einklappbare Lösungen direkt unter jeder Frage, klebrige
+> Sidebar mit Scroll-Spy und durchsuchbarem Glossar. Markdown ist die einzige Quelle, HTML ist
 > Build-Artefakt — bau kapitelweise im Generator."
 
 **Phase 4 — Übung & Selbstbewertung.**
@@ -112,13 +116,26 @@ selbsterklärend machen:
 > für statische Fakten ist sie Lärm. Bewährte Formen: **State Machine** (Klick =
 > Trigger, illegale Übergänge = disabled Buttons), **Gantt/Scheduler**,
 > **Step-Through-Tracer** (eine Anomalie *sehen* lassen), **Lookup-/Zoom-Walk**,
-> **Save/Restore-Stagger**, **A-vs-B-Stepper**, **„Hardware-Map-Journey"** (Marker
-> wandert durch Komponenten-Boxen).
+> **Save/Restore-Stagger**, **A-vs-B-Stepper**, **Tabbed A/B/C-Stepper** (mehrere
+> verwandte Szenarien in einem Widget — Tabs wechseln das Szenario, Step/Reset takten;
+> ideal für „dasselbe Beispiel über N Algorithmen/Strategien", z. B. Nested-Loop ↔
+> Sort-Merge ↔ Hash Join, oder Predicate-Pushdown Plan-Ebene ↔ Parquet-Scan),
+> **„Hardware-Map-Journey"** (Marker wandert durch Komponenten-Boxen). Bei
+> Monospace-/ASCII-Datenblöcken im Widget `white-space:pre; overflow-x:auto` (Demo:
+> `.viz .data` in `template.html`) — so bleibt die Spaltenausrichtung und scrollt mobil.
 
 **Phase 8 — lernen, dann bewerten *und anreichern*.** HTML öffnen, Antworten tippen,
 **Export for grading**, mit **„grade these"** zurück an Claude. Claude bewertet, gibt
 die perfekte Version, und ergänzt **für alles Falsche neue Callout-Boxen in der
 *Erklärung darüber*** — nicht nur im Lösungsschlüssel. Das macht aus Bewerten Lernen.
+
+**Phase 8b (optional) — Altklausur / Past-Paper als eigenes Kapitel.** Liegt eine alte
+Prüfung vor (PDF/Bild), als **eigenes Kapitel** ans Ende aufnehmen: jede Originalfrage
+im Wortlaut + **erklärte Musterlösung als Dropdown** (gleiche `<details>`-Mechanik wie
+der Selbsttest). Sehr lernwirksam, weil es Format, Punkteverteilung und typische Fallen
+1:1 trainiert. Pro Frage: knappe Aufgabenstellung, dann Lösung mit *Begründung* (nicht
+nur Ergebnis), Diagramme/SQL wo passend, und einem ⭐/⚠️ zur typischen Falle. MC-Aufgaben
+mit Richtig/Falsch **und Begründung je Aussage**. Im Markdown als normales `## N.`-Kapitel.
 
 ---
 
@@ -134,7 +151,28 @@ die perfekte Version, und ergänzt **für alles Falsche neue Callout-Boxen in de
 ## HTML-Bausteine
 Die kanonische Struktur liegt vollständig in [`template.html`](./template.html) — dort
 ist jede Komponente einmal vorgeführt. Kurzüberblick:
-- **Callout-Boxen** `.box.goal/.key/.simple/.howto/.warn` (+ `.box.formula`, `.box.framework`).
+- **Prosa zuerst, Boxen als Akzent.** Den Hauptteil tragen `### Titel`, `#### Untertitel`,
+  normale Absätze und Listen; Callout-Boxen nur für 🎯 Kernidee / ⭐ Faustregel / ⚠️ Falle.
+  Faustregel: besteht ein Abschnitt fast nur aus Boxen, ist zu viel in Callouts gepackt
+  (Demo „Fliesstext, Titel, Untertitel & Listen" in `template.html`). **Tabellarische Daten
+  als echte Markdown-/HTML-`<table>`**, nicht als ASCII im `<pre>`.
+- **Callout-Boxen** `.box.goal/.key/.simple/.howto/.warn` (+ `.box.formula`, `.box.framework`,
+  `.box.concept`). `.box.concept` (🧩) = freiform Architektur-/Konzeptkarte für „Was/Aufgabe/
+  Beispiel/Merke" ohne das starre Framework-Raster. ⚠️ **Boxen sparsam!** Default ist normale
+  Prosa (`#### Term` + Absatz); Boxen nur als Akzent (🎯 1×/Kapitel, ⭐ prüfungskritisch, ⚠️ Falle).
+  Begriffsdefinitionen gehören NICHT in 🧩-Boxen, sonst „alles hervorgehoben = nichts hervorgehoben".
+- **Generator-Direktiven für wiederverwendbare CSS-Komponenten** (kompakte Daten → gestyltes HTML,
+  statt ASCII im `<pre>`): ` ```flow ` (Pipeline/Loop aus Boxen; 1 Zeile/Schritt `Titel | Untertext`,
+  erste Zeile `loop` = Zyklus), ` ```compare3 ` (drei verwechselbare Begriffe; `Term | Abgrenzung`,
+  `!…` = Verwechslung), ` ```entity ` (Mini-DB-Tabelle; Zeile 1 = Name, Spalten `pk:`/`fk:`/`meas:`),
+  ` ```star ` (Star-Schema; Zeile 1 = `FaktTabelle | Mass1, Mass2`, Folgezeilen = Dimensionen),
+  ` ```formula ` (🧮-Karte; Zeile 1 = Ausdruck, `var | Bedeutung | Herkunft`, `=…` = Einsetz-Beispiel).
+  ` ```html ` reicht rohes HTML durch (Escape-Hatch). Demos + CSS in `template.html`.
+- **Diagramm-Entscheidung** (was → welche Form): **Tabellendaten → echte `<table>`** (NIE ASCII im `<pre>`);
+  **Ablauf/Pipeline/Loop → ` ```flow `**; **drei verwechselbare Begriffe → ` ```compare3 `**;
+  **einzelne DB-Tabelle → ` ```entity `, Star-Schema → ` ```star `**; **Formel → ` ```formula `**; rohe ASCII-Kunst nur als
+  allerletzter Ausweg. ⚠️ **Kein Doppel-Diagramm**: zeigt eine CSS-`flow` die Pipeline schon, KEIN zusätzliches
+  Mermaid derselben Sache (Redundanz = Lärm). Ziel: am Ende **0 `pre.ascii`** ausser echter Zeichen-Kunst.
 - **Formelkarten** (`.box.formula`): nie nur den Ausdruck. Vier Teile — (1) Formel im
   Monospace-Block `.fla` (`white-space:pre-wrap`); (2) `.fvar`-Aufschlüsselung je Symbol
   *was es ist* + „↳ wo:" (gegeben / zählen / berechnen / Konstante / Unbekannte);
@@ -144,9 +182,15 @@ ist jede Komponente einmal vorgeführt. Kurzüberblick:
   `Was · Wann · Beispiel · Falle · vs` (Abgrenzung zur Schwester-Idee).
 - **Mermaid via CDN**, Diagramme als `<pre class="mermaid">`; hand-gebaute CSS-Boxen für
   was Mermaid schlecht kann (Pyramiden, Memory-Layouts).
-- **Einklappbare Lösungen** `<details class="ans">` in `<div class="qa">`.
+- **Einklappbare Lösungen** `<details class="ans">` **direkt unter jeder `<div class="qa">`-Frage**
+  (nicht als Sammelblock am Kapitelende). Für Past-Paper/Altklausur dieselbe Mechanik.
 - **Sidebar-TOC + Scroll-Spy** via `IntersectionObserver`.
-- **Glossar** als `<p class="g"><b>TERM</b> — Definition.</p>` in `#glist` + Such-Input.
+- **Glossar** als `<p class="g"><b>TERM</b> — Definition.</p>` in `#glist`. **Live-Suche in der
+  Sidebar** (`#glsearch` → `#glres`): tippt man, erscheinen Treffer als klickbare Liste; Klick
+  scrollt zum Eintrag und lässt ihn kurz aufblinken (`.g.hit`). Im `template.html` fertig verdrahtet.
+- **Mobile-Härtung** (`@media(max-width:860px)`): Sidebar stapelt oben, Eingaben `font-size:16px`
+  (verhindert iOS-Auto-Zoom), Tabellen/`pre`/`figure.diagram`/`.viz .data` `overflow-x:auto`,
+  Headings skaliert. Alles im `template.html`-`<style>`.
 - **Antwortboxen + Export**: Script injiziert `textarea.myans` (localStorage) und einen
   „Export"-Button, der alle Antworten als Markdown sammelt, kopiert und herunterlädt.
 - **Stabile Heading-ids** `id="ch<N>-<slug>"` als Sprunglink-Ziele.
@@ -157,7 +201,9 @@ ist jede Komponente einmal vorgeführt. Kurzüberblick:
   `#glist`, `.mermaid`, `.viz`.
 - **Widgets**: je ein `.viz .viz-<name>`-Block, anime.js einmal via CDN, jedes Widget
   feature-checkt `typeof anime` + `prefers-reduced-motion` und fällt auf
-  Instant-Snap/Step-Through zurück.
+  Instant-Snap/Step-Through zurück. **Tabbed A/B/C-Stepper** (`.tabs`/`.tab`/`.strip`/`.stp`/
+  `.data`) für mehrere Szenarien in einem Widget — Demo + CSS in `template.html`. Self-contained:
+  jedes Widget bringt sein eigenes `<script>`-IIFE mit den Szenario-Daten mit.
 - **Dark- + Kompakt-Toggle** (beide localStorage); Kompakt blendet Prosa/Analogien/
   Widgets aus → dichtes Repetitions-Skelett.
 
@@ -213,6 +259,15 @@ ist jede Komponente einmal vorgeführt. Kurzüberblick:
   `if (reduced || typeof anime === 'undefined') { Endzustand sofort } else { animiere }`.
   Nur dynamische Konzepte, nutzer-getaktet, kein Autoplay.
 - **`<`, `>`, `&` escapen** beim Einbau in HTML (`&lt; &gt; &amp;`).
+- **`extract_shell()` muss HTML-Kommentare strippen** (`re.sub(r"<!--.*?-->","",tpl,flags=re.S)` VOR den
+  `<style>`/`<script>`-Regexes). Der Template-Kommentar enthält den Text „<style>/<script>" und wird sonst
+  mitgegriffen → Kommentar + `<html><head>` landen im `<head>` und zerschiessen das Layout. (Hart gelernt; im Starter gefixt.)
+- **Boxen sind selten, nicht der Default.** Begriffsdefinitionen → `#### Term` + Prosa, NICHT 🧩. Faustregel:
+  am Ende sollten **Absätze > Boxen** sein und 🧩 ≈ 0. „Wenn alles hervorgehoben ist, ist nichts hervorgehoben."
+- **Fortgeschrittene Ansichts-Patterns** (Referenz-Implementierung: `Notizen/build_html.py`): **Ansichts-Modi**
+  (Voll / Theorie / Fragen / Kompakt) via `html.mode-*` + Body-Zonen `.zone.theory`/`.zone.exercises`
+  (Generator wickelt Erklärung vs. Übungen); **„So benutzt du das" als Modal** hinter ?-Icon statt Sektion;
+  **Mock-Prüfung mit Inline-Antwortfeldern + eigenem Export** (nur die gezogenen Fragen). Bei Bedarf portieren.
 - **Cloud-Sync-Ordner** (ProtonDrive/Dropbox) können die Datei zwischen Read und Edit
   umschreiben → direkt vor jedem Edit neu lesen.
 - **Struktur per grep verifizieren** nach jedem Pass (Themen-Header, `## Erklärung/

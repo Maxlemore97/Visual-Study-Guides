@@ -39,6 +39,8 @@
   --warn:#d23b3b;  --warn-bg:#fdeced;
   --formula:#7c3aed;--formula-bg:#f6f3ff;
   --frame:#0e7490; --frame-bg:#e7f6fb;
+  --concept:#8a4fd6;--concept-bg:#f3eefe;
+  --ok:#0b8a6a; --bad:#d23b3b;
   --code-bg:#0f1525; --code-ink:#e6e9f2;
   --maxw:920px; --sidebar:270px;
 }
@@ -53,6 +55,8 @@
   --warn:#ff7b7b;  --warn-bg:#2e1517;
   --formula:#b69bff;--formula-bg:#211a36;
   --frame:#52c5dd; --frame-bg:#0f2730;
+  --concept:#b182ee;--concept-bg:#241a33;
+  --ok:#4fd1a5; --bad:#ff7b7b;
   --code-bg:#0a0f1a; --code-ink:#e6e9f2;
 }
 *{box-sizing:border-box}
@@ -81,6 +85,18 @@ nav.toc a:hover{background:var(--accent-soft)}
 nav.toc a.active{background:var(--accent);color:#fff;font-weight:600}
 nav.toc .num{display:inline-block;width:24px;color:var(--muted);font-variant-numeric:tabular-nums}
 nav.toc a.active .num{color:#dbe6ff}
+/* ---- Glossar-Live-Suche in der Sidebar -------------------------------- */
+nav.toc .gl-search{margin-top:.7rem;border-top:1px solid var(--line);padding-top:.55rem}
+nav.toc .gl-search input{margin:0}
+.gl-res{margin-top:.35rem;max-height:42vh;overflow:auto}
+.gl-res a{display:block;text-decoration:none;padding:.3rem .45rem;border-radius:7px;
+  border-left:2px solid transparent;cursor:pointer;margin:0}
+.gl-res a:hover{background:var(--accent-soft);border-left-color:var(--accent)}
+.gl-res a b{display:block;color:var(--accent);font-size:13px}
+.gl-res a span{display:block;color:var(--muted);font-size:11.5px;line-height:1.35;max-height:2.7em;overflow:hidden}
+.gl-res .empty{color:var(--muted);font-size:12.5px;padding:.3rem .45rem}
+.g.hit{animation:glflash 1.3s ease-out}
+@keyframes glflash{0%{background:var(--key-bg)}100%{background:transparent}}
 main{flex:1 1 auto;min-width:0;padding:26px 34px 120px;max-width:calc(var(--maxw) + 68px);margin:0 auto}
 .title{font-size:30px;margin:.2em 0 .1em}
 .sub{color:var(--muted);margin:0 0 1em}
@@ -126,6 +142,10 @@ a{color:var(--accent)}
 .box.framework dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:3px 10px;font-size:14px}
 .box.framework dt{font-weight:700;color:var(--frame)}
 .box.framework dd{margin:0}
+
+/* ---- Konzept-/Architektur-Karte (freiform, zwischen simple und framework) - */
+.box.concept{border-left-color:var(--concept);background:var(--concept-bg)}
+.box.concept .lab{color:var(--concept)}
 
 /* ---- Selbsttest: Frage + einklappbare Antwort ------------------------- */
 .qa{margin:.9em 0 .35em;padding:.7em 1em;background:var(--panel);border:1px solid var(--line);border-radius:10px}
@@ -183,6 +203,52 @@ textarea.myans{display:block;width:100%;min-height:64px;margin:.4em 0 0;padding:
   border-radius:8px;padding:.35rem .8rem;font-size:13px}
 .viz .cap{display:block;color:var(--muted);font-size:13px;margin-top:8px}
 
+/* ---- Tabbed A/B/C-Stepper (mehrere Szenarien in einem Widget) ---------- */
+.viz .tabs{display:flex;flex-wrap:wrap;gap:.35rem;margin-bottom:.5rem}
+.viz .tab{cursor:pointer;border:1px solid var(--line);background:var(--bg);color:var(--ink);
+  border-radius:8px;padding:.3rem .65rem;font-size:13px}
+.viz .tab.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+.viz .strip{margin:.2rem 0 .4rem}
+.viz .stp{display:inline-block;border:1px solid var(--line);border-radius:8px;
+  padding:.28rem .55rem;margin:.15rem .1rem;opacity:.4;font-size:13px}
+.viz .stp.on{opacity:1;border-color:var(--accent);background:var(--accent-soft)}
+.viz .arr{opacity:.5;margin:0 .15rem}
+.viz .data{white-space:pre;overflow-x:auto;-webkit-overflow-scrolling:touch;
+  font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;line-height:1.55;
+  background:var(--bg);border-radius:8px;padding:.5rem .7rem}
+.viz .data .ok{color:var(--ok);font-weight:700}
+.viz .data .bad{color:var(--bad);font-weight:700}
+
+/* ---- Wiederverwendbare Diagramm-Komponenten (Generator: ```flow / ```compare3 / ```entity / ```star) ---- */
+.flow{display:flex;flex-wrap:wrap;align-items:stretch;gap:.3rem;justify-content:center}
+.flow-step{flex:1 1 130px;min-width:115px;border:1px solid var(--line);border-left:3px solid var(--accent);
+  border-radius:10px;background:var(--bg);padding:.5rem .6rem;text-align:left}
+.flow-step b{display:block;color:var(--accent);font-size:13px}
+.flow-step span{display:block;color:var(--muted);font-size:11px;line-height:1.35;margin-top:.2rem}
+.flow-arr{display:flex;align-items:center;color:var(--muted);font-weight:700}
+.flow-loop{margin-top:.4rem;text-align:center;color:var(--accent);font-size:11.5px;border:1px dashed var(--accent);border-radius:8px;padding:.25rem;background:var(--accent-soft)}
+.compare3{display:flex;flex-wrap:wrap;gap:.5rem;margin:.4rem 0}
+.cmp-card{flex:1 1 150px;min-width:130px;border:1px solid var(--line);border-top:3px solid var(--accent);border-radius:10px;background:var(--accent-soft);padding:.5rem .6rem}
+.cmp-card b{display:block;color:var(--accent);font-size:13px;margin-bottom:.2rem}
+.cmp-card span{font-size:12px;color:var(--ink);line-height:1.4}
+.cmp-note{margin-top:.35rem;font-size:12px;color:var(--warn);border:1px dashed var(--warn);border-radius:8px;padding:.3rem .5rem;background:var(--warn-bg)}
+.tbl{border:1px solid var(--line);border-radius:9px;overflow:hidden;background:var(--panel);text-align:left;font-size:11.5px}
+.tbl-name{background:var(--accent);color:#fff;font-weight:700;padding:.28rem .5rem;font-size:12px;text-align:center}
+.tbl-col{padding:.16rem .5rem;border-top:1px solid var(--line);color:var(--ink)}
+.tbl-col .pk{color:var(--accent);font-weight:700}
+.tbl-col .fk{color:var(--muted)}
+.tbl-col.meas{color:var(--simple);font-weight:600}
+.tbl-col.sep{border-top:2px solid var(--accent)}
+.entity{max-width:340px;margin:.2rem auto}
+.star{display:flex;flex-direction:column;align-items:center;gap:.7rem}
+.star-dims{display:flex;flex-wrap:wrap;justify-content:center;gap:.5rem}
+.star-dim{border:1px solid var(--line);border-radius:9px;background:var(--bg);padding:.4rem .7rem;font-size:12.5px;font-weight:600;color:var(--ink)}
+.star-fact{border:2px solid var(--accent);border-radius:11px;background:var(--accent-soft);padding:.6rem 1.1rem;text-align:center}
+.star-fact b{color:var(--accent);font-size:14px}
+.star-meas{display:flex;flex-wrap:wrap;justify-content:center;gap:.35rem;margin-top:.4rem}
+.star-meas span{font-size:11.5px;color:var(--simple);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:.05rem .45rem}
+@media(max-width:860px){.flow-arr{transform:rotate(90deg)}.flow-step{flex-basis:100%}}
+
 /* ---- Kompakt-Modus: Prosa/Analogien/Widgets ausblenden (Repetition) --- */
 html.compact .box.simple,
 html.compact .box.howto,
@@ -197,11 +263,18 @@ html.compact textarea.myans{display:none}
   main{max-width:none;padding:0}
 }
 
-/* ---- Responsive: Sidebar oben stapeln --------------------------------- */
+/* ---- Responsive: Sidebar oben stapeln + Mobile-Härtung ---------------- */
 @media(max-width:860px){
   .wrap{display:block}
   nav.toc{position:static;height:auto;width:auto;border-right:none;border-bottom:1px solid var(--line)}
   main{padding:18px}
+  #topbar{flex-wrap:wrap;gap:.4rem .5rem}
+  .title{font-size:24px} h2.chap{font-size:21px} h3{font-size:17px}
+  /* iOS-Auto-Zoom beim Fokus vermeiden: Eingaben >= 16px */
+  textarea.myans,nav.toc input,.gl-search input{font-size:16px}
+  /* breite Inhalte horizontal scrollen statt brechen */
+  table,.viz .data,pre,figure.diagram{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .gl-res{max-height:50vh}
 }
 </style>
 </head>
@@ -225,6 +298,10 @@ html.compact textarea.myans{display:none}
     <a href="#ch1"><span class="num">1</span>Demo-Kapitel</a>
     <a href="#glossar"><span class="num">📖</span>Glossar</a>
     <!-- Pro Kapitel eine Zeile: <a href="#chN"><span class="num">N</span>Titel</a> -->
+    <div class="gl-search">
+      <input id="glsearch" type="search" placeholder="📖 Glossar durchsuchen…">
+      <div class="gl-res" id="glres"></div>
+    </div>
   </nav>
 
   <!-- ====================== INHALT ====================== -->
@@ -252,6 +329,54 @@ html.compact textarea.myans{display:none}
       <div class="box simple"><span class="lab">💡 Einfach gesagt</span>Eine Alltags-Analogie.</div>
       <div class="box howto"><span class="lab">🛠️ How-to</span>Schritte oder ein <code>befehl --beispiel</code>.</div>
       <div class="box warn"><span class="lab">⚠️ Stolperstein</span>Häufiger Fehler / Verwechslung.</div>
+      <div class="box concept"><span class="lab">🧩 Konzept</span>Freiform-Architektur-/Konzeptkarte (zwischen 💡 und 🧩-Framework): erklärt eine Idee mit Was/Aufgabe/Beispiel/Merke, ohne das starre Framework-Raster.</div>
+
+      <h3 id="ch1-prosa">Fliesstext, Titel, Untertitel &amp; Listen (die Basis)</h3>
+      <!-- WICHTIG: Nicht alles in Boxen packen! Callouts sind Akzente; den Hauptteil
+           tragen normale Überschriften, Absätze und Listen. -->
+      <p>Normaler <strong>Fliesstext</strong> mit <em>Betonung</em> und <code>inline-Code</code> ist die Standard-Prosa <em>zwischen</em> den Callouts. Definitionen, Herleitungen und Erklärungen gehören als Absatz/Liste — eine Box ist nur für Akzente (🎯 Kernidee, ⭐ Faustregel, ⚠️ Falle).</p>
+      <h4>Untertitel (h4) — feinere Gliederung</h4>
+      <p>Unter einem <code>h4</code>-Untertitel folgt ein kurzer erklärender Absatz. So bleibt die Seite lesbar statt zur Box-Wüste zu werden.</p>
+      <ul>
+        <li>Ungeordnete Liste — ein Stichpunkt</li>
+        <li>noch einer, mit <strong>Hervorhebung</strong> und <code>Begriff</code></li>
+      </ul>
+      <ol>
+        <li>Geordnete Liste — Schritt 1</li>
+        <li>Schritt 2 → Reihenfolge zählt</li>
+      </ol>
+      <div class="box warn"><span class="lab">⚠️ Faustregel</span>Wenn ein Abschnitt fast nur aus Boxen besteht, ist meist zu viel in Callouts gepackt — das Meiste sollte normaler Text + Listen sein, mit wenigen Boxen als Akzent.</div>
+
+      <h3 id="ch1-komponenten">Wiederverwendbare Diagramm-Komponenten (Generator-Direktiven)</h3>
+      <p><code>```flow</code> → Pipeline/Loop aus Boxen (1 Zeile/Schritt <code>Titel | Untertext</code>, erste Zeile <code>loop</code> = Zyklus):</p>
+      <figure class="diagram"><div class="flow">
+        <div class="flow-step"><b>Extract</b><span>aus Quelle lesen</span></div>
+        <div class="flow-arr">→</div>
+        <div class="flow-step"><b>Transform</b><span>bereinigen/integrieren</span></div>
+        <div class="flow-arr">→</div>
+        <div class="flow-step"><b>Load</b><span>ins Ziel schreiben</span></div>
+      </div></figure>
+      <p><code>```compare3</code> → drei verwechselbare Begriffe (1 Zeile/Begriff <code>Term | Abgrenzung</code>, <code>!…</code> = Verwechslung):</p>
+      <div class="compare3">
+        <div class="cmp-card"><b>CI</b><span>Continuous Integration — mergen + automatisch testen</span></div>
+        <div class="cmp-card"><b>CD — Delivery</b><span>jederzeit deploybar (Knopfdruck)</span></div>
+        <div class="cmp-card"><b>CD — Deployment</b><span>automatisch in Produktion</span></div>
+      </div>
+      <div class="cmp-note">⚠️ „CD" ist zweideutig: Delivery ≠ Deployment.</div>
+      <p><code>```entity</code> → Mini-DB-Tabelle (Zeile 1 = Name; Spalten <code>pk:</code>/<code>fk:</code>/<code>meas:</code>):</p>
+      <figure class="diagram"><div class="entity"><div class="tbl">
+        <div class="tbl-name">FACT_Sales</div>
+        <div class="tbl-col"><span class="fk">↗ Product_ID</span></div>
+        <div class="tbl-col"><span class="fk">↗ Customer_ID</span></div>
+        <div class="tbl-col meas sep">Σ Sales</div>
+      </div></div></figure>
+      <p><code>```star</code> → Star-Schema (Zeile 1 = <code>FaktTabelle | Mass1, Mass2</code>, Folgezeilen = Dimensionen):</p>
+      <figure class="diagram"><div class="star">
+        <div class="star-dims"><div class="star-dim">DimZeit</div><div class="star-dim">DimKunde</div></div>
+        <div class="star-fact"><b>FaktVerkauf</b><div class="star-meas"><span>Σ Umsatz</span><span>Σ Menge</span></div></div>
+        <div class="star-dims"><div class="star-dim">DimProdukt</div><div class="star-dim">DimRegion</div></div>
+      </div></figure>
+      <p><code>```formula</code> → 🧮-Formelkarte (siehe unten — nutzt <code>.box.formula</code>).</p>
 
       <h3 id="ch1-formel">Formelkarte (quantitatives Modul)</h3>
       <!-- Nie nur die Formel: Ausdruck + Variablen-Herkunft + Plug-in + Adjust -->
@@ -313,6 +438,38 @@ flowchart LR
           <button data-act="reset">Reset</button>
         </div>
         <span class="cap">Caption beschreibt, was am aktiven Schritt passiert.</span>
+      </div>
+
+      <h3 id="ch1-tabbed">Tabbed A/B/C-Stepper (mehrere Szenarien in einem Widget)</h3>
+      <!-- Selbst-enthaltenes Widget: Tabs wechseln das Szenario, Step/Reset takten.
+           Feature-checkt anime + prefers-reduced-motion. Monospace-Daten scrollen mobil. -->
+      <div class="viz viz-tabs">
+        <div class="tabs"><button class="tab on" data-a="A">Variante A</button><button class="tab" data-a="B">Variante B</button></div>
+        <div class="controls"><button data-act="prev">‹ Zurück</button><button data-act="next">Weiter ›</button><button data-act="reset">Reset</button></div>
+        <div class="strip"></div>
+        <div class="data"></div>
+        <span class="cap"></span>
+        <script>(function(){var root=document.currentScript.parentNode;
+        var ALG={
+          A:[["Schritt 1","Was am ersten Schritt passiert.","Eingabe: [1 3 5]   Treffer: <span class='ok'>—</span>"],
+             ["Schritt 2","Zweiter Schritt von Variante A.","[1 3 5] → <span class='ok'>match 3,5</span>"]],
+          B:[["Schritt 1","Variante B beginnt anders.","Eingabe: [2 4]   <span class='bad'>kein Treffer</span>"],
+             ["Schritt 2","Variante B Ende.","[2 4] → <span class='bad'>0 matches</span>"]]
+        };
+        var cur="A",i=0,strip=root.querySelector('.strip'),data=root.querySelector('.data'),cap=root.querySelector('.cap');
+        function S(){return ALG[cur];}
+        function render(){var s=S();
+          strip.innerHTML=s.map(function(x,k){return "<span class='stp "+(k<=i?'on':'')+"'>"+x[0]+"</span>"+(k<s.length-1?"<span class='arr'>→</span>":"");}).join('');
+          data.innerHTML=s[i][2];cap.textContent=s[i][1];
+          var red=matchMedia('(prefers-reduced-motion:reduce)').matches;
+          if(!red&&typeof anime!=='undefined')anime({targets:data,opacity:[.3,1],translateY:[6,0],duration:240});}
+        root.querySelectorAll('.tab').forEach(function(b){b.addEventListener('click',function(){
+          root.querySelectorAll('.tab').forEach(function(x){x.classList.remove('on');});
+          b.classList.add('on');cur=b.getAttribute('data-a');i=0;render();});});
+        root.querySelector('[data-act="next"]').addEventListener('click',function(){if(i<S().length-1){i++;render();}});
+        root.querySelector('[data-act="prev"]').addEventListener('click',function(){if(i>0){i--;render();}});
+        root.querySelector('[data-act="reset"]').addEventListener('click',function(){i=0;render();});
+        render();})();</script>
       </div>
 
       <h3>Selbsttest</h3>
@@ -405,8 +562,33 @@ if (typeof mermaid !== 'undefined') {
   });
 })();
 
-/* ====================== GLOSSAR-SUCHE ====================== */
-/* (Filtert die #glist-Zeilen über dasselbe Suchfeld nicht — eigenes Feld bei Bedarf.) */
+/* ====================== GLOSSAR-LIVE-SUCHE (Sidebar) ====================== */
+(function(){
+  var inp = document.getElementById('glsearch');
+  var res = document.getElementById('glres');
+  var glist = document.getElementById('glist');
+  if (!inp || !res || !glist) return;
+  var rows = [].slice.call(glist.querySelectorAll('.g')).map(function(p){
+    var b = p.querySelector('b');
+    return { el:p, term:(b ? b.textContent : ''), def:p.textContent };
+  });
+  inp.addEventListener('input', function(){
+    var q = inp.value.toLowerCase().trim();
+    if (!q){ res.innerHTML = ''; return; }
+    var hits = rows.filter(function(r){ return r.def.toLowerCase().indexOf(q) >= 0; }).slice(0, 15);
+    res.innerHTML = hits.length ? hits.map(function(r){
+      return "<a data-k='" + rows.indexOf(r) + "'><b>" + r.term + "</b><span>"
+        + r.def.replace(/^[^—-]*[—-]\s*/, '') + "</span></a>";
+    }).join('') : "<div class='empty'>Kein Treffer.</div>";
+    [].slice.call(res.querySelectorAll('a')).forEach(function(a){
+      a.addEventListener('click', function(){
+        var r = rows[+a.getAttribute('data-k')];
+        r.el.scrollIntoView({ behavior:'smooth', block:'center' });
+        r.el.classList.remove('hit'); void r.el.offsetWidth; r.el.classList.add('hit');
+      });
+    });
+  });
+})();
 
 /* ====================== GLOSSAR-TOOLTIPS (TreeWalker → abbr.gl + #gl-tip) ====================== */
 (function(){

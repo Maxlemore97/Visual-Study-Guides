@@ -50,6 +50,8 @@ import argparse
 # DATEN-SLOTS — pro Modul füllen (nach Kapitelnummer). Wie in den per-Modul-
 # Generatoren: hier liegen die Dinge, die nicht inline im Markdown stehen.
 # ---------------------------------------------------------------------------
+# Hinweis: Key = laufende Kapitel-Position (1., 2., 3. ## -> 1,2,3), NICHT die
+# gedruckte Nummer. Bei lückenhafter Nummerierung (## 1./## 2./## 5.) am Index orientieren.
 MERMAID: dict[int, str] = {}      # {1: 'flowchart LR\n A --> B'}  → ans Kapitelende
 GLOSSARY: list[tuple[str, str]] = []  # [('CPU', 'Central Processing Unit …')]
 WIDGETS: dict[int, str] = {}      # {3: '<div class="viz viz-…">…</div>'} → ans Kapitelende
@@ -85,6 +87,112 @@ def inline(text: str) -> str:
 
 def is_html_block(line: str) -> bool:
     return line.lstrip().startswith("<")
+
+
+# ---------------------------------------------------------------------------
+# Wiederverwendbare CSS-Komponenten (kompakte Daten -> gestyltes HTML).
+# Statt ASCII im <pre>: Flows/Pipelines/Loops, Verwechslungs-Trios, Mini-DB-
+# Tabellen und Formelkarten. CSS dazu liegt in template.html.
+#   ```flow      1 Zeile/Schritt "Titel | Untertext"; erste Zeile "loop" = Zyklus
+#   ```compare3  1 Zeile/Begriff "Term | Abgrenzung"; Zeile "!…" = Verwechslung
+#   ```entity    Zeile 1 = Tabellenname; Spalten mit Prefix pk:/fk:/meas: (sonst Attribut)
+#   ```star      Zeile 1 = "FaktTabelle | Mass1, Mass2"; Folgezeilen = Dimensionen (Star-Schema)
+#   ```formula   Zeile 1 = Ausdruck; "var | Bedeutung | Herkunft"; "=…" = Einsetz-Beispiel
+#   ```html      rohes HTML durchreichen (Escape-Hatch für Sonderfälle)
+# ---------------------------------------------------------------------------
+def _nonempty(text):
+    return [l for l in text.split("\n") if l.strip()]
+
+
+def render_flow(text):
+    lines = _nonempty(text)
+    loop = bool(lines) and lines[0].strip().lower() == "loop"
+    if loop:
+        lines = lines[1:]
+    cells = []
+    for idx, l in enumerate(lines):
+        parts = l.split("|", 1)
+        sub = f'<span>{inline(parts[1].strip())}</span>' if len(parts) > 1 and parts[1].strip() else ""
+        cells.append(f'<div class="flow-step"><b>{inline(parts[0].strip())}</b>{sub}</div>')
+        if idx < len(lines) - 1:
+            cells.append('<div class="flow-arr">→</div>')
+    cls = "flow loop" if loop else "flow"
+    hint = '<div class="flow-loop">↺ Schleife: wiederholen, bis fertig</div>' if loop else ""
+    return f'<figure class="diagram"><div class="{cls}">{"".join(cells)}</div>{hint}</figure>'
+
+
+def render_compare3(text):
+    note, cards = "", []
+    for l in _nonempty(text):
+        s = l.strip()
+        if s.startswith("!"):
+            note = s[1:].strip()
+            continue
+        parts = s.split("|", 1)
+        desc = inline(parts[1].strip()) if len(parts) > 1 else ""
+        cards.append(f'<div class="cmp-card"><b>{inline(parts[0].strip())}</b><span>{desc}</span></div>')
+    n = f'<div class="cmp-note">⚠️ {inline(note)}</div>' if note else ""
+    return f'<div class="compare3">{"".join(cards)}</div>{n}'
+
+
+def render_entity(text):
+    lines = _nonempty(text)
+    if not lines:
+        return ""
+    cols = []
+    for l in lines[1:]:
+        s = l.strip(); low = s.lower()
+        if low.startswith("pk:"):
+            cols.append(f'<div class="tbl-col"><span class="pk">🔑 {inline(s[3:].strip())}</span></div>')
+        elif low.startswith("fk:"):
+            cols.append(f'<div class="tbl-col"><span class="fk">↗ {inline(s[3:].strip())}</span></div>')
+        elif low.startswith("meas:"):
+            cols.append(f'<div class="tbl-col meas">Σ {inline(s[5:].strip())}</div>')
+        else:
+            cols.append(f'<div class="tbl-col">{inline(s)}</div>')
+    return (f'<figure class="diagram"><div class="entity"><div class="tbl">'
+            f'<div class="tbl-name">{inline(lines[0].strip())}</div>{"".join(cols)}</div></div></figure>')
+
+
+def render_star(text):
+    """Star-Schema: Zeile 1 = 'FaktTabelle | Mass1, Mass2', Folgezeilen = Dimensionen.
+    Rendert eine zentrale Fakt-Box mit Massen, Dimensionen oben/unten drumherum."""
+    lines = _nonempty(text)
+    if not lines:
+        return ""
+    fact = [p.strip() for p in lines[0].split("|")]
+    meas = ""
+    if len(fact) > 1 and fact[1]:
+        spans = "".join(f"<span>Σ {inline(m.strip())}</span>" for m in fact[1].split(",") if m.strip())
+        meas = f'<div class="star-meas">{spans}</div>'
+    dims = [d.strip() for d in lines[1:] if d.strip()]
+    half = (len(dims) + 1) // 2
+    def row(items):
+        return ('<div class="star-dims">' +
+                "".join(f'<div class="star-dim">{inline(d)}</div>' for d in items) +
+                "</div>") if items else ""
+    fact_box = f'<div class="star-fact"><b>{inline(fact[0])}</b>{meas}</div>'
+    return (f'<figure class="diagram"><div class="star">'
+            f'{row(dims[:half])}{fact_box}{row(dims[half:])}</div></figure>')
+
+
+def render_formula(text):
+    lines = _nonempty(text)
+    if not lines:
+        return ""
+    fvars, ex = [], ""
+    for l in lines[1:]:
+        s = l.strip()
+        if s.startswith("="):
+            ex = s[1:].strip(); continue
+        parts = [p.strip() for p in s.split("|")]
+        src = f'<span class="src">{inline(parts[2])}</span>' if len(parts) > 2 and parts[2] else ""
+        mean = inline(parts[1]) if len(parts) > 1 else ""
+        dash = " — " if mean else " "
+        fvars.append(f'<div class="fvar"><b>{inline(parts[0])}</b>{dash}{mean} {src}</div>')
+    exh = f'<div class="ex"><b>Einsetzen:</b> {inline(ex)}</div>' if ex else ""
+    return (f'<div class="box formula"><span class="lab">🧮 Formel</span>'
+            f'<span class="fla">{html.escape(lines[0].strip())}</span>{"".join(fvars)}{exh}</div>')
 
 
 def convert(md: str):
@@ -124,6 +232,18 @@ def convert(md: str):
             if lang == "mermaid":
                 out.append(f'<figure class="diagram"><pre class="mermaid">\n'
                            f'{html.escape(code)}\n</pre></figure>')
+            elif lang == "html":
+                out.append(code)                       # rohes HTML durchreichen (Escape-Hatch)
+            elif lang == "flow":
+                out.append(render_flow(code))
+            elif lang == "compare3":
+                out.append(render_compare3(code))
+            elif lang == "entity":
+                out.append(render_entity(code))
+            elif lang == "star":
+                out.append(render_star(code))
+            elif lang == "formula":
+                out.append(render_formula(code))
             else:
                 out.append(f"<pre><code>{html.escape(code)}</code></pre>")
             continue
@@ -175,7 +295,9 @@ def convert(md: str):
         if hit:
             cls, lab = CALLOUTS[hit]
             body = stripped[len(hit):].strip()
-            body = re.sub(r"^\*\*[^*]+\*\*[:：]?\s*", "", body)  # evtl. eigenes Label entfernen
+            # nur ein explizites Label MIT Doppelpunkt entfernen ("**Key:** …" — Doppelpunkt
+            # INNERHALB des Bold), NICHT jeden führenden Fettbegriff ("🎯 **Begriff** ist X" bleibt).
+            body = re.sub(r"^\*\*[^*]+[:：]\*\*\s*", "", body)
             out.append(f'<div class="box {cls}"><span class="lab">{lab}</span>{inline(body)}</div>')
             i += 1
             continue
@@ -221,6 +343,10 @@ def convert(md: str):
 def extract_shell(template_path: pathlib.Path):
     """<style>…</style> und den letzten <script>…</script>-Block aus template.html holen."""
     tpl = template_path.read_text(encoding="utf-8")
+    # WICHTIG: HTML-Kommentare entfernen — der Template-Kommentar enthält den Text
+    # "<style>/<script>" und würde sonst von den Regexes fälschlich gegriffen
+    # (Folge: Kommentar + <html><head> landen im <head> → Layout kaputt).
+    tpl = re.sub(r"<!--.*?-->", "", tpl, flags=re.S)
     style = re.search(r"<style>.*?</style>", tpl, re.S)
     scripts = re.findall(r"<script>.*?</script>", tpl, re.S)  # inline scripts (ohne src)
     cdn = re.findall(r'<script src="[^"]+"></script>', tpl)
