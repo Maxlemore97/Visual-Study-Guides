@@ -27,6 +27,7 @@ Referenz Material/               source recipes & notes (gitignored)
 | Betriebssysteme (Operating Systems) — Zusammenfassung | 🇩🇪 German | [View](https://maxlemore97.github.io/Visual-Study-Guides/Betriebssysteme%20-%20Zusammenfassung.html) · [Source](./Betriebssysteme%20-%20Zusammenfassung.html) |
 | CT 2 — Zusammenfassung | 🇩🇪 German | [View](https://maxlemore97.github.io/Visual-Study-Guides/CT%202%20-%20Zusammenfassung.html) · [Source](./CT%202%20-%20Zusammenfassung.html) |
 | IIS2 — Zusammenfassung | 🇩🇪 German | [View](https://maxlemore97.github.io/Visual-Study-Guides/IIS2%20-%20Zusammenfassung.html) · [Source](./IIS2%20-%20Zusammenfassung.html) |
+| Investition und Finanzierung — Zusammenfassung | 🇩🇪 German | [View](https://maxlemore97.github.io/Visual-Study-Guides/Investition%20und%20Finanzierung%20-%20Zusammenfassung.html) · [Source](./Investition%20und%20Finanzierung%20-%20Zusammenfassung.html) |
 | Physik Engines — Zusammenfassung | 🇩🇪 German | [View](https://maxlemore97.github.io/Visual-Study-Guides/Physik%20Engines%20-%20Zusammenfassung.html) · [Source](./Physik%20Engines%20-%20Zusammenfassung.html) |
 | SWEN2 — Zusammenfassung | 🇩🇪 German | [View](https://maxlemore97.github.io/Visual-Study-Guides/SWEN2%20-%20Zusammenfassung.html) · [Source](./SWEN2%20-%20Zusammenfassung.html) |
 

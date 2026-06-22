@@ -1,2 +1,4 @@
 .DS_Store
 Referenz Material/
+__pycache__/
+*.pyc
